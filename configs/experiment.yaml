@@ -1,0 +1,13 @@
+seed: 7
+surface:
+  moneyness_grid: [0.80, 0.90, 1.00, 1.10, 1.20]
+  tenor_days: [7, 30, 90, 180]
+policy:
+  n_prototypes: 6
+  similarity_temperature: 0.35
+  action_dimension: 2
+backtest:
+  rebalance_frequency: daily
+  transaction_cost_bps: 1.0
+  cvar_alpha: 0.95
+

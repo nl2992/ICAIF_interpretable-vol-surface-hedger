@@ -138,4 +138,8 @@ Expected panel columns: `date, spot, strike`, an implied vol (`iv`, or `mid` +
 To run the whole experiment on real data, build train/val/test banks from disjoint
 date ranges and pass them to `ivsh.pipeline.evaluate_and_report`.
 
+The committed research scope is in [`reports/project_scope.md`](reports/project_scope.md),
+and the exact WRDS / OptionMetrics pull list (tables, fields, `secid`s, sample
+queries) is in [`docs/wrds_data_request.md`](docs/wrds_data_request.md).
+
 See [`TODO.md`](TODO.md) for the full research roadmap and the status of each phase.

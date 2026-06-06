@@ -49,12 +49,17 @@ regime-switching synthetic market the prototype hedger reduces $\mathrm{CVaR}_{9
 by $53\%$ versus delta and $36\%$ versus delta--vega and edges the black box,
 with significance under paired bootstrap and Wilcoxon tests. On \textbf{14 years
 of real SPY options (2010--2023, 3.5M cleaned quotes)}, run as bounded residuals
-on the delta--vega hedge, it beats delta--vega on \emph{every} tail metric
-($-16\%$ $\mathrm{CVaR}_{95}$, $-61\%$ max-drawdown) and on cost-adjusted utility
-at comparable mean and turnover, while the flexible black box overfits in-sample
-drift and blows up out-of-sample. An ablation removing the CVaR term inflates
-$\mathrm{CVaR}_{95}$ from $\sim$2.4 to \textbf{87.6}, quantifying the value of the
-risk objective. Transparency and tail-risk performance are not mutually
+on the delta--vega hedge, the prototype hedger is \emph{significantly} better than
+delta and \emph{far more robust than the black box}---which overfits in-sample
+drift and blows up out-of-sample---while being \emph{statistically on par with
+delta--vega} on the tail (point estimate $-16\%$ $\mathrm{CVaR}_{95}$ and $-61\%$
+max-drawdown, but a paired-bootstrap $p=0.086$). Across five random seeds the
+prototype is stable ($\mathrm{CVaR}_{95}=2.36\pm0.11$) whereas the black box is
+wildly unstable ($10.0\pm11.4$); a strict walk-forward shows delta--vega is the
+more consistent baseline. An ablation removing the CVaR term inflates
+$\mathrm{CVaR}_{95}$ from $\sim$2.4 to \textbf{87.6}. The contribution is thus
+interpretability and out-of-sample robustness \emph{at no tail cost}, not raw
+outperformance of delta--vega: transparency and tail-risk control are not mutually
 exclusive.
 \end{abstract}
 
@@ -341,21 +346,88 @@ black-box MLP  & 3.65 & 30.23 & 37.86 & 604.8 & 5{,}054 & $-26.58$ \\
 \end{tabular}
 \end{table}
 
-On real data (Table~\ref{tab:real}) the interpretable prototype beats
-delta--vega on \emph{every} tail metric ($-16\%$ $\mathrm{CVaR}_{95}$, $-61\%$
-max-drawdown) and on cost-adjusted utility at comparable mean and turnover, while
-the black box overfits the in-sample drift and blows up out-of-sample
-($\mathrm{CVaR}_{95}=30.2$, turnover $5{,}054$, max-DD $604.8$). The
-cumulative-P\&L curve (Figure~\ref{fig:real_pnl}) shows the black box's
-path-dependent collapse versus the prototype's smooth, low-drawdown profile. The
-constrained, auditable policy generalises; the black box does not.
+On real data (Table~\ref{tab:real}) the prototype's point estimates are best on
+every tail metric ($-16\%$ $\mathrm{CVaR}_{95}$, $-61\%$ max-drawdown) and on
+utility, at comparable mean and turnover, while the black box overfits the
+in-sample drift and blows up out-of-sample ($\mathrm{CVaR}_{95}=30.2$, turnover
+$5{,}054$, max-DD $604.8$). The cumulative-P\&L curve (Figure~\ref{fig:real_pnl})
+shows the black box earning a high mean through large directional/vol bets but
+with severe drawdowns, versus the prototype's smooth, low-drawdown profile.
+
+Significance is more nuanced (Table~\ref{tab:realsig}). The prototype's tail is
+\emph{significantly} smaller than delta ($-2.32$, $p\approx0$) and the black box
+($-27.8$, $p\approx0$), but its edge over the strong delta--vega baseline is
+\emph{not} significant ($-0.46$, 95\% CI $[-0.93,+0.08]$, $p=0.086$): on the tail
+it is a favourable tie. We therefore frame the real-data contribution as
+robustness and interpretability at no tail cost, not outperformance of
+delta--vega.
+
+\begin{table}[t]
+\centering
+\caption{Real SPY significance of $\mathrm{CVaR}_{95}$ differences (prototype
+minus baseline), paired-bootstrap point estimate, 95\% CI and two-sided $p$.}
+\label{tab:realsig}
+\small
+\begin{tabular}{lrrr}
+\toprule
+comparison & $\Delta\mathrm{CVaR}_{95}$ & 95\% CI & bootstrap $p$ \\
+\midrule
+vs.\ delta       & $-2.32$ & $[-3.25,\,-1.29]$ & $\approx 0$ \\
+vs.\ delta--vega & $-0.46$ & $[-0.93,\,+0.08]$ & $0.086$ \\
+vs.\ black box   & $-27.8$ & $[-31.4,\,-23.7]$ & $\approx 0$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{real_cumulative_pnl.png}
-  \caption{Cumulative P\&L on the real SPY test window: the black box collapses
-  while the prototype stays smooth and low-drawdown.}
+  \caption{Cumulative P\&L on the real SPY test window: the black box earns a high
+  mean but with severe drawdowns, while the prototype stays smooth and
+  low-drawdown.}
   \label{fig:real_pnl}
+\end{figure}
+
+\subsection{Robustness: multi-seed and walk-forward}
+\label{sec:robustness}
+
+\begin{table}[t]
+\centering
+\caption{Real SPY multi-seed $\mathrm{CVaR}_{95}$ (mean$\pm$std over seeds
+$\{7,13,23,42,2025\}$). The black box is wildly seed-unstable.}
+\label{tab:multiseed}
+\small
+\begin{tabular}{lrr}
+\toprule
+policy & $\mathrm{CVaR}_{95}$ mean & std \\
+\midrule
+delta          & 4.71  & 0.00 \\
+delta--vega    & 2.85  & 0.00 \\
+black-box MLP  & 10.02 & 11.38 \\
+\textbf{prototype (ours)} & \textbf{2.36} & 0.11 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We stress-test stability two ways. \emph{Multi-seed}
+(Table~\ref{tab:multiseed}): refitting across five seeds, every seed's prototype
+beats delta--vega and the spread is tight ($2.36\pm0.11$), whereas the black box's
+tail varies wildly ($10.0\pm11.4$)---the central robustness finding.
+\emph{Walk-forward} (Figure~\ref{fig:walkforward}): training on all prior years
+and testing on each subsequent year is a sterner, per-regime test. Here the
+prototype is $\le$ delta--vega in only $4$ of $10$ test years---delta--vega is the
+more consistent baseline---and in the sharp COVID-2020 fold the anchored residual
+\emph{added} risk ($53.5$ vs $4.1$). The black box, however, is catastrophic in
+\emph{both} crisis folds (2020: $61.9$; 2022: $61.0$), while the prototype handles
+2022 ($3.8$). The robust, reproducible conclusion is stability relative to the
+black box and rough parity with delta--vega, not uniform outperformance.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{walkforward_cvar.png}
+  \caption{Walk-forward $\mathrm{CVaR}_{95}$ by test year (real SPY). Note the
+  black box's crisis-year blow-ups (2020, 2022) and the prototype's 2020 failure.}
+  \label{fig:walkforward}
 \end{figure}
 
 \subsection{Ablations}
@@ -410,7 +482,12 @@ dominate calm periods. The activation timeline
 (Figure~\ref{fig:real_activation}) shows which regime drives the hedge through
 the test period, and a single-trade audit traces one stressed episode end to end
 (spot, holdings, prototype weights, cumulative P\&L). Every action is attributable
-to named market regimes.
+to named market regimes. We note an honest caveat: on the long real sample the
+learned residual is small (mean activation entropy ${\approx}0.11$), so the
+prototype largely \emph{reproduces} delta--vega rather than learning sharply
+distinct regime actions; the rich, differentiated behaviour is clearest on the
+synthetic market, which motivates a regime-\emph{diagnostic} reading of the model
+on real data.
 
 \begin{figure}[t]
   \centering
@@ -424,11 +501,17 @@ to named market regimes.
 \section{Limitations}
 \label{sec:limitations}
 
-Real-data results are noisier and regime-dependent; over the long horizon the
-optimal anchored residual is conservative (it stays near delta--vega with a small
-systematic vega trim), so the edge is concentrated in the tail and drawdown
-rather than in dramatic regime-switching trades. The cleanest comparative finding
-is \emph{black-box overfitting versus prototype robustness}. The underlying hedge
+The real-data tail improvement over delta--vega is \emph{not} statistically
+significant ($p=0.086$), and a strict walk-forward shows delta--vega is the more
+consistent baseline (prototype better in $4/10$ years, with a COVID-2020 failure);
+the significant, reproducible claims are the improvement over delta and the
+robustness gap versus the black box. Results are noisier and regime-dependent;
+over the long horizon the optimal anchored residual is conservative (it stays near
+delta--vega with a small systematic vega trim, activation entropy ${\approx}0.11$),
+so the edge is concentrated in the tail and drawdown rather than in dramatic
+regime-switching trades, and interpretability is most vivid on synthetic data. The
+black-box baseline is a single-hidden-layer MLP without architecture or
+hyperparameter search, and the study is single-asset and single-liability. The underlying hedge
 leg uses SPY (tradable); an SPX study would need a futures proxy for the delta
 leg. Costs are modelled as a proportional half-spread, with no market-impact or
 borrow modelling. Finally, the study uses European-style options and a daily
@@ -439,11 +522,14 @@ rebalance; path-dependent payoffs would require a richer state.
 \label{sec:conclusion}
 
 A small, auditable set of volatility-surface prototypes delivers hedging that is
-competitive-to-better than delta--vega on tail risk and cost-adjusted utility,
-clearly more robust out-of-sample than a black-box deep hedger, and fully
-interpretable---every action traces to named market regimes. The CVaR objective
-and, on real data, residual anchoring are the two ingredients that make this
-work; transparency and tail-risk performance are not mutually exclusive.
+\emph{competitive with} delta--vega on tail risk and cost-adjusted utility (a
+statistical tie, not a proven win), \emph{clearly more robust} out-of-sample than a
+black-box deep hedger, and \emph{fully interpretable}---every action traces to
+named market regimes. The CVaR objective and, on real data, residual anchoring are
+the two ingredients that make this work; the headline is that transparency and
+tail-risk control need not be traded against one another, and that a constrained,
+interpretable policy can be markedly safer out-of-sample than an unconstrained
+deep hedger.
 
 Future work proceeds along three axes. \emph{Empirical breadth:} extend to SPX
 with a futures delta proxy, to additional underlyings, and to path-dependent

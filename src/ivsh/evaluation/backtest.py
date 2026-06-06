@@ -42,9 +42,13 @@ def run_baseline(bank: EpisodeBank, name: str):
     }
 
 
-def run_policy(policy, bank: EpisodeBank, scaler: Standardizer):
+def run_policy(policy, bank: EpisodeBank, scaler: Standardizer, anchor: bool = False):
+    """Evaluate a learned policy. If ``anchor`` the policy output is a residual
+    added to the delta-vega Greek hedge."""
     x = scaler.transform(bank.flat_features())
     holdings = policy.predict_holdings(x).reshape(bank.n_episodes, bank.horizon, -1)
+    if anchor:
+        holdings = holdings + BASELINES["delta_vega"](bank)
     return {
         "pnl": bank.episode_pnl(holdings),
         "turnover": bank.turnover(holdings),

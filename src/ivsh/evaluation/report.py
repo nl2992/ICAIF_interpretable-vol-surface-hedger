@@ -181,10 +181,14 @@ def plot_embedding(features_std: np.ndarray, labels: np.ndarray, centers: np.nda
     plt.close(fig)
 
 
-def plot_example_trade(proto, scaler, bank, episode: int, path: Path) -> None:
+def plot_example_trade(proto, scaler, bank, episode: int, path: Path, anchor: bool = False) -> None:
     x = scaler.transform(bank.features[episode])  # [L, F]
     weights = proto.weights(x)  # [L, K]
     holdings = proto.predict_holdings(x)  # [L, 2]
+    if anchor:
+        from ivsh.baselines.policies import delta_vega_hedge
+
+        holdings = holdings + delta_vega_hedge(bank)[episode]
     steps = np.arange(bank.horizon)
     spot = bank.spot[episode, :-1]
     # cumulative P&L of this single episode under the prototype hedge
@@ -276,6 +280,37 @@ def prototype_catalogue(proto, km, scaler, bank) -> pd.DataFrame:
                 "action_shares": round(float(actions[j, 0]), 3),
                 "action_option": round(float(actions[j, 1]), 3),
             }
+        )
+    return pd.DataFrame(rows)
+
+
+def prototype_date_annotations(km, trb, day_to_date) -> pd.DataFrame:
+    """Map each prototype to the historical dates it activates on (real data).
+
+    Uses the cluster assignment of every training decision point; reports the
+    medoid's calendar date, the dominant year-month, and the count.
+    """
+    day_to_date = pd.to_datetime(np.asarray(day_to_date))
+    L = trb.horizon
+    n_rows = len(km.labels)
+    ep = np.arange(n_rows) // L
+    step = np.arange(n_rows) % L
+    day_idx = trb.start_days[ep] + step
+    dates = day_to_date[day_idx]
+    k = km.centers.shape[0]
+    rows = []
+    for j in range(k):
+        mask = km.labels == j
+        d_j = dates[mask]
+        if len(d_j) == 0:
+            rows.append({"prototype": f"P{j}", "example_date": "", "top_period": "", "n_dates": 0})
+            continue
+        med_day = trb.start_days[km.medoid_idx[j] // L] + km.medoid_idx[j] % L
+        example = pd.Timestamp(day_to_date[med_day]).strftime("%Y-%m-%d")
+        periods = pd.Series(d_j).dt.strftime("%Y-%m")
+        top = periods.value_counts().idxmax()
+        rows.append(
+            {"prototype": f"P{j}", "example_date": example, "top_period": top, "n_dates": int(mask.sum())}
         )
     return pd.DataFrame(rows)
 

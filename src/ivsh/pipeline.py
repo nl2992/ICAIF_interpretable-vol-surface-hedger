@@ -233,15 +233,54 @@ def evaluate_and_report(cfg: ExperimentConfig, data: dict, models: dict) -> dict
     worst = stress_idx[np.argmin(results["delta"]["pnl"][stress_idx])]
     top_protos = R.plot_example_trade(proto, scaler, teb, int(worst), figs / "example_trade.png", anchor=anchor_proto)
 
+    # paper figures: architecture, cumulative P&L, activation timeline, CVaR CIs
+    day_to_date = data.get("day_to_date")
+    order = np.argsort(teb.start_days)
+    test_dates = day_to_date[teb.start_days[order]] if day_to_date is not None else None
+    R.plot_architecture(figs / "architecture.png")
+    R.plot_cumulative_pnl(pnl_by, order, day_to_date[teb.start_days] if day_to_date is not None else None, figs / "cumulative_pnl.png")
+    w_ep = proto.weights(scaler.transform(teb.flat_features())).reshape(
+        teb.n_episodes, teb.horizon, -1
+    ).mean(axis=1)
+    R.plot_activation_timeline(w_ep, order, teb.regime_start, day_to_date[teb.start_days] if day_to_date is not None else None, figs / "activation_timeline.png")
+    cvar_ci = R.plot_cvar_ci(pnl_by, figs / "cvar_ci.png")
+
     # ---- tables ----
     comp = R.comparison_table(pnl_by, turn_by)
     comp.to_csv(tables / "model_comparison.csv")
+    cvar_ci.to_csv(tables / "cvar_confidence.csv")
     catalogue = R.prototype_catalogue(proto, km, scaler, trb)
-    day_to_date = data.get("day_to_date")
     if day_to_date is not None:
         annotations = R.prototype_date_annotations(km, trb, day_to_date)
         catalogue = catalogue.merge(annotations, on="prototype", how="left")
     catalogue.to_csv(tables / "prototype_catalogue.csv", index=False)
+
+    # per-episode P&L paths (for cumulative plots / external analysis)
+    paths_df = pd.DataFrame({"start_day": teb.start_days, "regime_start": teb.regime_start})
+    if day_to_date is not None:
+        paths_df.insert(1, "date", day_to_date[teb.start_days])
+    for name, pnl in pnl_by.items():
+        paths_df[f"pnl_{name}"] = pnl
+    paths_df.sort_values("start_day").to_csv(tables / "test_pnl_paths.csv", index=False)
+
+    # significance + hyperparameters tables
+    sig_rows = []
+    for other, s in stats.items():
+        cb = s["cvar_boot"]
+        sig_rows.append({
+            "comparison": f"prototype_minus_{other}", "delta_cvar95": round(cb["diff"], 4),
+            "ci_low": round(cb["ci_low"], 4), "ci_high": round(cb["ci_high"], 4),
+            "boot_p": round(cb["p_two_sided"], 4), "wilcoxon_p": round(s["wilcoxon"]["pvalue"], 6),
+        })
+    pd.DataFrame(sig_rows).to_csv(tables / "significance.csv", index=False)
+    pd.DataFrame([{
+        "n_prototypes": cfg.proto_train.n_prototypes, "action_scale": cfg.proto_train.action_scale,
+        "anchor": anchor_proto, "cvar_alpha": cfg.proto_train.cvar_alpha,
+        "cvar_weight": cfg.proto_train.cvar_weight, "proto_l2": cfg.proto_train.l2,
+        "bb_hidden": cfg.bb_train.hidden, "bb_l2": cfg.bb_train.l2, "max_iter": cfg.proto_train.max_iter,
+        "liab_tenor_days": cfg.env.liab_tenor_days, "hedge_tenor_days": cfg.env.hedge_tenor_days,
+        "underlying_cost_bps": cfg.env.underlying_cost_bps, "option_cost_bps": cfg.env.option_cost_bps,
+    }]).T.to_csv(tables / "hyperparameters.csv", header=False)
 
     # ---- ablations ----
     ablations = None

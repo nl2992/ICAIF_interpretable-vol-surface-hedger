@@ -1,0 +1,13 @@
+n_prototypes,8
+action_scale,1.5
+anchor,True
+cvar_alpha,0.95
+cvar_weight,1.0
+proto_l2,0.001
+bb_hidden,16
+bb_l2,0.03
+max_iter,400
+liab_tenor_days,30
+hedge_tenor_days,60
+underlying_cost_bps,1.0
+option_cost_bps,30.0

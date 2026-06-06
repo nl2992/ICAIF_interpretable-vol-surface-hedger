@@ -54,11 +54,20 @@ bootstrap and Wilcoxon tests.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"      # numpy / pandas / scipy / matplotlib / pyyaml
-pytest                       # 22 tests, ~4s
+pytest                       # 25 tests, ~4s
 
 # One-command experiment (data -> train -> evaluate -> report), ~3 min:
 python scripts/run_experiment.py --config configs/experiment.yaml
 ```
+
+Or use the Makefile: `make install`, `make test`, `make run` (full),
+`make run-fast` (no ablations), `make staged` (four-stage flow), or
+`make reproduce` (install + test + run from a clean checkout).
+
+The repository already ships the generated study artifacts so results are
+viewable without running anything: the markdown reports, figures and CSV tables
+under [`reports/`](reports/) and the trained prototype model at
+`checkpoints/proto_surface_hedger_best.npz`.
 
 This writes [`reports/final_report.md`](reports/final_report.md) (model
 comparison + significance tests), [`reports/prototype_audit_report.md`](reports/prototype_audit_report.md)

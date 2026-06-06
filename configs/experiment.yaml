@@ -1,13 +1,43 @@
-seed: 7
-surface:
-  moneyness_grid: [0.80, 0.90, 1.00, 1.10, 1.20]
-  tenor_days: [7, 30, 90, 180]
-policy:
-  n_prototypes: 6
-  similarity_temperature: 0.35
-  action_dimension: 2
-backtest:
-  rebalance_frequency: daily
-  transaction_cost_bps: 1.0
-  cvar_alpha: 0.95
+# Canonical experiment configuration for the interpretable vol-surface hedger.
+# Consumed by all scripts in scripts/ via ivsh.pipeline.load_config.
 
+experiment_id: ivsh_demo
+seed: 7
+n_days: 500                      # trading days per simulated market path
+
+# Monte-Carlo path seeds (disjoint sets => held-out-path evaluation).
+train_seeds: {start: 100, count: 24}
+val_seeds:   {start: 150, count: 6}
+test_seeds:  {start: 200, count: 12}
+
+run_ablations: true
+n_prototypes_sweep: [4, 8, 16, 32]
+reports_dir: reports
+checkpoints_dir: checkpoints
+
+env:
+  liab_tenor_days: 30
+  hedge_tenor_days: 60
+  option_type: call
+  episode_stride: 3
+  underlying_cost_bps: 1.0
+  option_cost_bps: 30.0
+  notional: 1.0
+
+proto_train:
+  n_prototypes: 8
+  action_scale: 2.5
+  cvar_alpha: 0.95
+  cvar_weight: 1.0
+  l2: 0.001
+  max_iter: 400
+  seed: 7
+
+bb_train:
+  hidden: 16
+  action_scale: 2.5
+  cvar_alpha: 0.95
+  cvar_weight: 1.0
+  l2: 0.03
+  max_iter: 400
+  seed: 7

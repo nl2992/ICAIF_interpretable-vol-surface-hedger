@@ -8,14 +8,11 @@ version = "0.1.0"
 description = "Prototype-based volatility-surface hedging research stack"
 requires-python = ">=3.10"
 dependencies = [
-    "numpy>=1.26,<2.0",
+    "numpy>=1.26",
     "pandas>=2.2",
     "scipy>=1.12",
-    "scikit-learn>=1.4",
     "pyyaml>=6.0",
-    "pydantic>=2.6",
     "matplotlib>=3.8",
-    "tqdm>=4.66",
 ]
 
 [project.optional-dependencies]
@@ -34,3 +31,4 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+pythonpath = ["src"]

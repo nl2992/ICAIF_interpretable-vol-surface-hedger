@@ -8,8 +8,6 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-data/*
-!data/.gitkeep
 results/*
 !results/.gitkeep
 notebooks/.ipynb_checkpoints/
@@ -18,4 +16,3 @@ notebooks/.ipynb_checkpoints/
 # figures and tables are committed as deliverables; checkpoints are not.
 artifacts/
 checkpoints/
-/project notes

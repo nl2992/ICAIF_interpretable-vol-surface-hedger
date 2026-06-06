@@ -135,6 +135,30 @@ risk and was dramatically more robust than the black box, which earns a high mea
 by taking large directional/vol bets (note its high cumulative P&L) at the cost of
 huge drawdowns (max-DD 605) — i.e. it speculates rather than hedges.*
 
+### 4.3 Robustness analyses (real data)
+
+**Multi-seed** (`tables/multiseed_cvar.csv`, `figures/multiseed_cvar.png`) — refit
+across seeds {7,13,23,42,2025} on the standard split:
+
+| policy | CVaR₉₅ mean | std |
+|---|---|---|
+| delta | 4.71 | 0.00 |
+| delta-vega | 2.85 | 0.00 |
+| black-box | 10.02 | **11.38** |
+| prototype | **2.36** | 0.11 |
+
+Every seed's prototype beats delta-vega and the spread is tight; the **black box
+is wildly seed-unstable** — the central robustness finding.
+
+**Walk-forward** (`tables/walkforward_cvar.csv`, `figures/walkforward_cvar.png`) —
+train on all prior years, test on each subsequent year. This sterner test is
+honest about fragility: the prototype is ≤ delta-vega on CVaR₉₅ in only **4 of 10**
+years (delta-vega is the more consistent baseline), and in the **COVID-2020 fold
+the prototype's anchored residual added risk (53.5 vs 4.1)**. The black box is
+catastrophic in *both* crisis folds (2020: 61.9, 2022: 61.0), whereas the
+prototype handles 2022 (3.8). Net: **stability vs the black box and rough parity
+with delta-vega, not uniform outperformance.**
+
 ## 5. Ablations
 
 `tables/ablation_metrics.csv` / `ablation_report.md`:

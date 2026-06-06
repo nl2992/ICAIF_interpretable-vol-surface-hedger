@@ -54,7 +54,18 @@ essentially **reproduces delta-vega with a conservative trim** rather than learn
 dramatically different regime actions (the rich regime-specific behaviour shows up
 on the synthetic market). Ablation: dropping the CVaR term explodes the tail to
 CVaR₉₅ **87.6**. Full report set in [`reports_real/`](reports_real/); see
-[`reports/ICAIF_report.md`](reports/ICAIF_report.md) for the write-up.
+[`reports/ICAIF_report.md`](reports/ICAIF_report.md) and the LaTeX draft in
+[`paper/`](paper/) for the write-up.
+
+**Robustness analyses** (`scripts/run_real_analysis.py`): across 5 seeds the
+prototype is tight (CVaR₉₅ 2.36±0.11) while the black box is wildly unstable
+(10.0±11.4). A strict **walk-forward** (train on all prior years, test each next
+year) is honest about fragility: the prototype beats delta-vega in only **4/10**
+years (delta-vega is the more consistent baseline) and its anchored residual
+**added risk in the COVID-2020 fold** — though the black box is catastrophic in
+both 2020 and 2022 crises. **Net takeaway: interpretable prototype hedging is far
+more robust than a black-box deep hedger and roughly on par with delta-vega — the
+contribution is interpretability + robustness, not raw outperformance.**
 
 ## Method
 

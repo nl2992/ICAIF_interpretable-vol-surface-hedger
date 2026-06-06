@@ -54,7 +54,10 @@ require proprietary option data are scaffolded but deferred.
   (`src/ivsh/evaluation/`)
 - ✅ **Interpretability.** Prototype catalogue, reconstructed prototype surfaces,
   latent embedding, activation entropy, **example-trade audit**.
-- ✅ **Ablations.** Prototype count K sweep; surface-vs-greeks-only feature sets.
+- ✅ **Ablations (Phase 14).** Prototype count K sweep; surface-only vs
+  greeks-only vs full feature sets; **no-CVaR (mean-only) objective**; **no
+  transaction costs**; plus black-box-vs-prototype (head) and regime slicing in
+  the main comparison.
 - ✅ **Reproducibility.** `experiment_id / dataset_version / model_version / seed /
   split_id` recorded in `reports/manifest.json`; chronological + held-out-path
   splits; seeded throughout.

@@ -45,21 +45,26 @@ def main() -> None:
     ap.add_argument("--residual-scale", type=float, default=1.5)
     args = ap.parse_args()
 
-    print("loading OptionsDX files ...")
-    panel = load_optionsdx(args.data)
-    print(f"  {len(panel):,} long rows; {panel['date'].nunique()} dates "
-          f"({panel['date'].min().date()} -> {panel['date'].max().date()})")
+    import pandas as pd
 
-    clean, summary = clean_option_panel(
-        panel,
-        max_rel_spread=0.5,
-        iv_bounds=(0.03, 1.5),
-        moneyness_band=(0.80, 1.20),
-        otm_only=True,
-        min_volume=1,
-    )
-    print(summary)
-    print(f"  -> {len(clean):,} clean OTM quotes")
+    # Clean each input pattern (e.g. one year) separately to bound peak memory,
+    # then concatenate the (small) cleaned panels.
+    parts = []
+    for pat in args.data:
+        panel = load_optionsdx(pat)
+        c, _ = clean_option_panel(
+            panel,
+            max_rel_spread=0.5,
+            iv_bounds=(0.03, 1.5),
+            moneyness_band=(0.80, 1.20),
+            otm_only=True,
+            min_volume=1,
+        )
+        parts.append(c)
+        print(f"  {pat}: {len(panel):,} raw -> {len(c):,} clean")
+    clean = pd.concat(parts, ignore_index=True).sort_values("date").reset_index(drop=True)
+    print(f"total: {len(clean):,} clean OTM quotes; {clean['date'].nunique()} dates "
+          f"({clean['date'].min().date()} -> {clean['date'].max().date()})")
 
     anchor = not args.no_anchor
     rscale = args.residual_scale

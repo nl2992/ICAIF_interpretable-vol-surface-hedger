@@ -198,6 +198,20 @@ def _smooth_abs(x: np.ndarray, eps: float = 1e-4) -> np.ndarray:
     return np.sqrt(x * x + eps * eps)
 
 
+def with_costs(bank: EpisodeBank, underlying_cost_bps: float, option_cost_bps: float) -> EpisodeBank:
+    """Return a shallow copy of ``bank`` with different transaction costs.
+
+    Arrays are shared (read-only for P&L); only the cost config changes. Used by
+    the no-transaction-cost ablation.
+    """
+    import dataclasses
+
+    new_cfg = dataclasses.replace(
+        bank.config, underlying_cost_bps=underlying_cost_bps, option_cost_bps=option_cost_bps
+    )
+    return dataclasses.replace(bank, config=new_cfg)
+
+
 def concat_banks(banks: list[EpisodeBank]) -> EpisodeBank:
     """Pool episodes from several market paths into one bank (Monte-Carlo set).
 

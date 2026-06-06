@@ -21,6 +21,8 @@
     "train_cvar": 0.9973773234853899
   },
   "prototype_entropy": 1.1567210927100955,
+  "anchor": false,
+  "market_desc": "synthetic regime-switching stochastic-vol + jumps, zero carry (martingale)",
   "config": {
     "experiment_id": "ivsh_demo",
     "seed": 7,
@@ -90,6 +92,7 @@
       "max_iter": 400,
       "seed": 7,
       "l2": 0.001,
+      "anchor": false,
       "n_prototypes": 8,
       "action_scale": 2.5,
       "hidden": 16
@@ -101,6 +104,7 @@
       "max_iter": 400,
       "seed": 7,
       "l2": 0.03,
+      "anchor": false,
       "n_prototypes": 8,
       "action_scale": 2.5,
       "hidden": 16

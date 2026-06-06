@@ -9,7 +9,7 @@
 - Liability: short 1.0 ATM call(s), 30-day tenor, hedged daily to expiry.
 - Hedge instruments: underlying + 60-day ATM option.
 - Costs: 1.0 bps underlying, 30.0 bps option (on traded notional).
-- Market: regime-switching stochastic-vol + jumps, zero carry (martingale). Trained on 3768 Monte-Carlo episodes, tested on 1884 held-out-path episodes.
+- Market: synthetic regime-switching stochastic-vol + jumps, zero carry (martingale). Trained on 3768 episodes, tested on 1884 held-out episodes.
 - Objective: maximise E[P&L] − CVaR₉₅(loss) (Rockafellar–Uryasev), L2-regularised.
 
 ## Model comparison (test set)

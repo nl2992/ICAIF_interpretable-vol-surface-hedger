@@ -22,11 +22,14 @@ regime-switching synthetic market the prototype hedger reduces CVaR₉₅ by **5
 vs delta and **36%** vs delta–vega and edges the black box, with significance
 under paired bootstrap and Wilcoxon tests. On **14 years of real SPY options
 (2010–2023, 3.5M cleaned quotes)**, run as bounded residuals on the delta–vega
-hedge, it beats delta–vega on **every** tail metric (−16% CVaR₉₅, **−61%
-max-drawdown**) and on cost-adjusted utility at comparable mean and turnover,
-while the flexible black box overfits in-sample drift and **blows up
-out-of-sample**. An ablation removing the CVaR term inflates CVaR₉₅ from ~2.4 to
-**87.6**, quantifying the value of the risk objective.
+hedge, it is **significantly better than delta and far more robust than the
+black-box deep hedger** (which overfits in-sample drift and blows up
+out-of-sample), while being **statistically on par with delta–vega** on the tail
+(Δcvar₉₅ −0.46, bootstrap 95% CI [−0.93, +0.08], p=0.086) — i.e. interpretability
+and out-of-sample robustness at no cost to tail performance, rather than a proven
+outperformance of the strongest classical baseline. An ablation removing the CVaR
+term inflates CVaR₉₅ from ~2.4 to **87.6**, quantifying the value of the risk
+objective.
 
 ---
 
@@ -121,10 +124,16 @@ The held-out window spans COVID-2020 and the 2022 bear market.
 
 ![Cumulative P&L](../reports_real/figures/cumulative_pnl.png)
 
-The interpretable prototype beats delta–vega on every tail metric and on utility
-at comparable mean/turnover, while the black box overfits the in-sample drift and
-blows up out-of-sample. The cumulative-P&L curve shows the black box's
-path-dependent collapse vs the prototype's smooth, low-drawdown profile.
+**Significance** (`tables/significance.csv`, paired bootstrap on test episodes):
+prototype − delta = −2.32 CVaR₉₅ (CI [−3.25, −1.29], p≈0) and prototype − black-box
+= −27.8 (CI [−31.4, −23.7], p≈0) are both strongly significant; **prototype −
+delta–vega = −0.46 (CI [−0.93, +0.08], p=0.086) is not** — on the tail the
+prototype is a statistical tie with delta–vega (favourable point estimate, better
+max-drawdown 17.7 vs 45.6 and utility, but the CVaR gap is within noise). The
+honest headline is therefore: *interpretable hedging matched delta–vega on tail
+risk and was dramatically more robust than the black box, which earns a high mean
+by taking large directional/vol bets (note its high cumulative P&L) at the cost of
+huge drawdowns (max-DD 605) — i.e. it speculates rather than hedges.*
 
 ## 5. Ablations
 
@@ -153,14 +162,24 @@ episode end to end (spot, holdings, prototype weights, cumulative P&L).
 
 ## 7. Limitations
 
-- Real-data results are noisier and regime-dependent; over the long horizon the
-  optimal anchored residual is conservative (it stays near delta–vega with a small
-  systematic vega trim), so the edge is concentrated in the tail/drawdown rather
-  than dramatic regime-switching trades. The cleanest comparative finding is
-  **black-box overfitting vs prototype robustness**.
+- **The real-data tail improvement over delta–vega is not statistically
+  significant** (Δcvar₉₅ −0.46, p=0.086); the significant claims are vs delta and
+  vs the black box. We therefore frame the contribution as *interpretability +
+  out-of-sample robustness at no tail cost*, not raw outperformance of delta–vega.
+- **Interpretability under-delivers on real data:** the learned residual is small
+  (activation entropy ≈0.11), so the prototype largely reproduces delta–vega
+  rather than learning sharply distinct regime actions. The rich, differentiated
+  regime behaviour appears on the synthetic market; bringing it to real data
+  (e.g. a regime-diagnostic framing, or forcing more residual capacity) is future
+  work.
+- **The black-box baseline is a small MLP without architecture/HPO search;** a
+  tuned recurrent deep hedger would be a stronger comparator before claiming
+  "competitive with black-box" in general.
+- Single underlying (SPY), single liability (one 30d ATM option), single training
+  fit — no multi-asset / multi-seed robustness yet.
 - The underlying hedge leg uses SPY (tradable); an SPX study would need a futures
-  proxy for the delta leg.
-- Costs are proportional half-spread; no market impact / borrow modelling.
+  proxy for the delta leg. Costs are proportional half-spread; no market impact /
+  borrow modelling.
 
 ## 8. Conclusion
 

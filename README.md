@@ -139,7 +139,10 @@ To run the whole experiment on real data, build train/val/test banks from disjoi
 date ranges and pass them to `ivsh.pipeline.evaluate_and_report`.
 
 The committed research scope is in [`reports/project_scope.md`](reports/project_scope.md),
-and the exact WRDS / OptionMetrics pull list (tables, fields, `secid`s, sample
-queries) is in [`docs/wrds_data_request.md`](docs/wrds_data_request.md).
+the exact WRDS / OptionMetrics pull list is in
+[`docs/wrds_data_request.md`](docs/wrds_data_request.md), and free/cheap
+alternatives (OptionsDX, Dolthub, Alpha Vantage, …) with column mappings are in
+[`docs/data_sources.md`](docs/data_sources.md). Surfaces can be denoised per
+maturity with SVI via `market_from_option_panel(..., surface_method="svi")`.
 
 See [`TODO.md`](TODO.md) for the full research roadmap and the status of each phase.

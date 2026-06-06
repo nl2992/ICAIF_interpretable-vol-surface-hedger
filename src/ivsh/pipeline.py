@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from ivsh.data.market import MarketConfig, simulate_market
+from ivsh.features.arbitrage import audit_market
 from ivsh.envs.hedging_env import EnvConfig, build_episode_bank, concat_banks
 from ivsh.evaluation import report as R
 from ivsh.evaluation.backtest import (
@@ -197,6 +198,11 @@ def evaluate_and_report(cfg: ExperimentConfig, data: dict, models: dict) -> dict
         ablations = _run_ablations(trb, vlb, teb, scaler, cfg)
         ablations.to_csv(tables / "ablation_metrics.csv", index=False)
 
+    # ---- static no-arbitrage audit (representative held-out path) ----
+    audit = audit_market(simulate_market(MarketConfig(n_days=cfg.n_days, seed=cfg.test_seeds[0])))
+    (reports / "arbitrage_audit.md").write_text(audit.to_markdown())
+    audit.per_day.to_csv(tables / "arbitrage_per_day.csv", index=False)
+
     # ---- checkpoint ----
     np.savez(
         ckpt / "proto_surface_hedger_best.npz",
@@ -346,8 +352,9 @@ def _write_final_report(reports, cfg, comp, metrics_by, regime_by, stats, manife
         "## Headline finding",
         _headline(metrics_by, stats),
         "",
-        "See [prototype_audit_report.md](prototype_audit_report.md) for interpretability and "
-        "[ablation_report.md](ablation_report.md) for ablations.",
+        "See [prototype_audit_report.md](prototype_audit_report.md) for interpretability, "
+        "[ablation_report.md](ablation_report.md) for ablations, and "
+        "[arbitrage_audit.md](arbitrage_audit.md) for the static no-arbitrage surface audit.",
         "",
     ]
     (reports / "final_report.md").write_text("\n".join(lines))

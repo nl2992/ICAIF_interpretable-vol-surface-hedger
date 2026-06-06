@@ -52,4 +52,4 @@ A negative Δcvar95 with a CI excluding 0 means the prototype hedger has a *sign
 ## Headline finding
 The prototype surface hedger cuts CVaR₉₅ tail loss by **53%** versus delta and **36%** versus delta-vega, while landing below the black-box deep hedger (prototype 1.298 vs black-box 1.734) — with a fully auditable, prototype-based decision trail.
 
-See [prototype_audit_report.md](prototype_audit_report.md) for interpretability and [ablation_report.md](ablation_report.md) for ablations.
+See [prototype_audit_report.md](prototype_audit_report.md) for interpretability, [ablation_report.md](ablation_report.md) for ablations, and [arbitrage_audit.md](arbitrage_audit.md) for the static no-arbitrage surface audit.

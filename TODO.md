@@ -45,7 +45,9 @@ require proprietary option data are scaffolded but deferred.
 - ✅ Real option-chain ingestion & cleaning loader (`ivsh.data.loaders`): CSV/Parquet
   reader, crossed/stale/expired/wide-spread filters, and a per-day parametric
   surface fit that maps real quotes into the same `MarketPath`/`EpisodeBank`.
-  🟡 Static-arbitrage (calendar/butterfly) checks still to add.
+- ✅ Static no-arbitrage diagnostics (`ivsh.features.arbitrage`): strike monotonicity,
+  butterfly/convexity (implied density >= 0), and calendar (total-variance)
+  checks; emitted as `reports/arbitrage_audit.md`.
 - ⬜ SVI / arbitrage-free surface fitting on observed quotes.
 - 🟡 Additional baselines (delta-gamma-vega with two options, static-regime,
   historical-regression hedge).

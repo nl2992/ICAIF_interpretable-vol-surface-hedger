@@ -1,48 +1,132 @@
 # Interpretable Volatility-Surface Hedger
 
-Prototype-based hedging research stack for option books whose state is an implied-volatility surface rather than spot alone.
+An interpretable, **prototype-based** option-hedging agent whose state is the
+**implied-volatility surface** (its regime), not just spot, delta, or a scalar
+Greek. Each market state is encoded as a moneyness–tenor surface, compared with a
+small set of learned market *prototypes*, and the hedge action is a
+similarity-weighted blend of the prototypes' learned actions — so every trade is
+traceable to named volatility regimes.
 
-## Objective
+> **Research question.** Can an interpretable prototype-based volatility-surface
+> hedger reduce tail hedge losses versus delta / delta-vega hedging while staying
+> competitive with a black-box deep-hedging policy?
 
-Build a hedger that maps option-surface regimes to auditable hedge actions. The core idea is to encode each market state as a moneyness-tenor surface tensor, compare it with learned or curated prototypes, and blend prototype hedge actions using similarity weights. This is inspired by ProtoHedge's interpretable policy head, adapted to volatility-surface risk.
+**Answer (this repo, synthetic study): yes.** On held-out market paths the
+prototype hedger cuts CVaR₉₅ tail loss by ~50% versus delta and ~35% versus
+delta-vega, and **beats** the black-box deep hedger on tail risk and turnover —
+while remaining fully auditable. All differences are significant under paired
+bootstrap and Wilcoxon tests.
 
-## Initial scope
+| policy | mean P&L | CVaR₉₅ | CVaR₉₉ | worst | turnover | utility |
+|---|---|---|---|---|---|---|
+| unhedged | −0.40 | 13.21 | 18.19 | 23.49 | 0 | −13.61 |
+| delta | −0.15 | 2.79 | 4.22 | 5.12 | 299 | −2.93 |
+| delta-vega | −0.22 | 2.02 | 3.35 | 5.10 | 245 | −2.24 |
+| black-box MLP | +0.19 | 1.73 | 2.74 | 4.05 | 270 | −1.54 |
+| **prototype (ours)** | **+0.03** | **1.30** | **1.76** | **2.24** | **175** | **−1.27** |
 
-- Surface dataset contract for option chains, implied vols, Greeks, underlying returns, and hedge costs.
-- Feature builders for moneyness-tenor surface tensors and regime descriptors.
-- Prototype policy interface with similarity-weighted hedge actions.
-- Backtest metrics focused on hedge P&L, CVaR, expected shortfall, turnover, and action stability.
-- Smoke-testable synthetic workflow until production data is supplied.
+*(test set; lower CVaR / worst / turnover is better, higher utility is better. Reproduce with the command below.)*
+
+## Method
+
+- **Market.** Regime-switching stochastic-volatility + jump model that emits a
+  *parametric* IV surface (level, skew, curvature, term slope) whose shape — not
+  just spot — carries tail-risk information. Zero carry, jump-compensated, so the
+  market is a martingale: a policy can only improve the objective by genuinely
+  hedging, never by harvesting drift. Trained Monte-Carlo over many paths; tested
+  on disjoint held-out paths.
+- **Liability & hedges.** Short an ATM option, hedged daily to expiry with the
+  underlying plus a longer-dated ATM option. Transaction costs charged on traded
+  notional (build, rebalance, and terminal liquidation).
+- **Objective.** Maximise `E[P&L] − CVaR₉₅(loss)` in the smooth
+  Rockafellar–Uryasev form, L2-regularised. Both learnable policies are trained
+  with **analytic gradients** (exact backprop through the policy and the P&L) via
+  L-BFGS-B, with validation early stopping.
+- **Prototype policy.** Prototypes are k-means medoids in standardised feature
+  space; the policy learns a bounded hedge action per prototype and a similarity
+  temperature. The hedge is the softmax-similarity-weighted average of prototype
+  actions — the exact quantity exposed for interpretability.
+- **Baselines.** Unhedged, Black–Scholes delta, delta-vega, plus a black-box MLP
+  deep hedger sharing the same features, action space, costs and objective.
+
+## Quickstart
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"      # numpy / pandas / scipy / matplotlib / pyyaml
+pytest                       # 22 tests, ~4s
+
+# One-command experiment (data -> train -> evaluate -> report), ~3 min:
+python scripts/run_experiment.py --config configs/experiment.yaml
+```
+
+This writes [`reports/final_report.md`](reports/final_report.md) (model
+comparison + significance tests), [`reports/prototype_audit_report.md`](reports/prototype_audit_report.md)
+(prototype catalogue, surfaces, example-trade audit) and
+[`reports/ablation_report.md`](reports/ablation_report.md), plus figures and CSV
+tables.
+
+### Staged pipeline (matches the project roadmap)
+
+```bash
+python scripts/build_dataset.py --config configs/experiment.yaml   # -> artifacts/dataset.pkl
+python scripts/train.py         --config configs/experiment.yaml   # -> artifacts/models.pkl + checkpoint
+python scripts/evaluate.py      --config configs/experiment.yaml   # -> reports + tables + figures
+python scripts/make_report.py   --experiment_id ivsh_demo          # -> summary of the run
+```
 
 ## Repo layout
 
 ```text
 src/ivsh/
-  data/          dataset contracts and synthetic surface generator
-  features/      surface tensor and regime features
-  models/        prototype policy
-  backtest/      simple hedging simulator
-  evaluation/    risk and stability metrics
-configs/         experiment definitions
-docs/            research notes and data checklist
-scripts/         runnable entry points
-tests/           smoke and unit tests
+  data/        market simulator (regime SV + jumps) and IV surface
+  pricing/     vectorised Black-Scholes price & Greeks (delta..volga)
+  features/    surface tensor + leak-free standardisation
+  envs/        episode-based hedging environment (vectorised P&L + analytic grad)
+  models/      prototype hedger, black-box MLP, k-means
+  baselines/   unhedged / delta / delta-vega Greek hedges
+  training/    CVaR objective + L-BFGS training with analytic gradients
+  evaluation/  metrics, paired bootstrap / Wilcoxon, backtest, report & figures
+  utils/       chronological splits, feature selection
+  pipeline.py  end-to-end orchestration (build_data -> train -> evaluate -> report)
+configs/       experiment.yaml (canonical config)
+scripts/       run_experiment.py + staged build/train/evaluate/make_report
+reports/       generated report, figures, tables
+tests/         pricing, env identities, no-lookahead, metrics, pipeline smoke
 ```
 
-## Quickstart
+## Notes & scope
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-pytest
-python scripts/run_synthetic_demo.py
+- **Data.** The study runs on a self-contained synthetic market (no proprietary
+  options data required), the standard setting for deep-hedging methodology
+  papers. **Real option chains plug in via `ivsh.data.loaders`** — see below.
+- **Dependencies.** Pure numpy/scipy/pandas/matplotlib — no PyTorch — so it runs
+  anywhere (including Python 3.14). Gradients are hand-derived and unit-tested
+  against finite differences.
+- **Reproducibility.** Every run records `experiment_id`, `dataset_version`,
+  `model_version`, `seed` and `split_id` in `reports/manifest.json`.
+
+## Using real option data
+
+Real surfaces flow through the **exact same** environment, features, baselines and
+models — the bridge is the parametric surface (level / skew / curvature / term
+slope), which `ivsh.data.loaders` fits per trading day by least squares to your
+cleaned implied-vol quotes:
+
+```python
+from ivsh.data.loaders import load_option_panel, clean_quotes, market_from_option_panel
+from ivsh.envs.hedging_env import EnvConfig, build_episode_bank
+
+panel = load_option_panel("data/raw/spx_chains.parquet")   # long-form quotes
+panel, summary = clean_quotes(panel)                        # crossed/stale/expired filters
+market = market_from_option_panel(panel, rate=0.0, div=0.0) # -> MarketPath
+bank = build_episode_bank(market, EnvConfig())              # -> drop into the pipeline
 ```
 
-## Next decisions
+Expected panel columns: `date, spot, strike`, an implied vol (`iv`, or `mid` +
+`option_type` to imply it), and time to maturity (`ttm_years` | `ttm_days` |
+`expiry`). Full contract in [`docs/data_checklist.md`](docs/data_checklist.md).
+To run the whole experiment on real data, build train/val/test banks from disjoint
+date ranges and pass them to `ivsh.pipeline.evaluate_and_report`.
 
-- Underlying universe: SPX/SPY, rates options, single-name options, or futures options.
-- Hedge instruments: underlying only, delta-vega basket, listed options, or futures.
-- Rebalance cadence and cost model.
-- Whether prototypes are learned end-to-end, clustered offline, or seeded from named market regimes.
-
+See [`TODO.md`](TODO.md) for the full research roadmap and the status of each phase.

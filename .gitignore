@@ -12,3 +12,8 @@ results/*
 !results/.gitkeep
 notebooks/.ipynb_checkpoints/
 
+# Regenerable experiment artifacts (large/binary). The reports/ markdown,
+# figures and tables are committed as deliverables; checkpoints are not.
+artifacts/
+checkpoints/
+

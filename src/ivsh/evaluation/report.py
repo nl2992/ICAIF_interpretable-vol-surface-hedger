@@ -1,0 +1,291 @@
+"""Figures and tables for the model-comparison and interpretability reports.
+
+All plotting uses a non-interactive backend so the pipeline runs headless.
+Prototype surfaces are reconstructed analytically from the four surface factors
+(level, skew, curvature, term slope) stored in each prototype's feature vector,
+so every prototype maps to a concrete, human-readable volatility surface.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+
+from ivsh.data.market import TAU0  # noqa: E402
+from ivsh.evaluation.metrics import compute_metrics  # noqa: E402
+
+_METHOD_COLORS = {
+    "unhedged": "#999999",
+    "delta": "#4c72b0",
+    "delta_vega": "#55a868",
+    "blackbox": "#c44e52",
+    "prototype": "#8172b3",
+}
+
+
+def _color(name: str) -> str:
+    return _METHOD_COLORS.get(name, "#333333")
+
+
+# --------------------------------------------------------------------------- #
+# Comparison figures
+# --------------------------------------------------------------------------- #
+def plot_pnl_distributions(pnl_by_method: dict[str, np.ndarray], path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    for name, pnl in pnl_by_method.items():
+        lo, hi = np.quantile(pnl, [0.005, 0.995])
+        grid = np.linspace(lo, hi, 200)
+        hist, edges = np.histogram(np.clip(pnl, lo, hi), bins=60, density=True)
+        centers = 0.5 * (edges[:-1] + edges[1:])
+        ax.plot(centers, hist, label=name, color=_color(name), lw=1.8)
+    ax.axvline(0, color="k", lw=0.6, ls=":")
+    ax.set_xlabel("episode hedging P&L")
+    ax.set_ylabel("density")
+    ax.set_title("Hedging P&L distribution by policy (test set)")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_cvar_comparison(metrics_by_method: dict[str, dict], path: Path) -> None:
+    names = list(metrics_by_method)
+    x = np.arange(len(names))
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    w = 0.38
+    ax.bar(x - w / 2, [metrics_by_method[n]["cvar_95"] for n in names], w, label="CVaR 95%", color="#4c72b0")
+    ax.bar(x + w / 2, [metrics_by_method[n]["cvar_99"] for n in names], w, label="CVaR 99%", color="#c44e52")
+    ax.set_xticks(x)
+    ax.set_xticklabels(names, rotation=20)
+    ax.set_ylabel("tail loss (lower = better)")
+    ax.set_title("Tail hedge loss by policy")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_regime_tail(regime_by_method: dict[str, dict], path: Path) -> None:
+    names = list(regime_by_method)
+    x = np.arange(len(names))
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    w = 0.38
+    calm = [regime_by_method[n].get("calm", {}).get("cvar_95", np.nan) for n in names]
+    stress = [regime_by_method[n].get("stress", {}).get("cvar_95", np.nan) for n in names]
+    ax.bar(x - w / 2, calm, w, label="calm start", color="#55a868")
+    ax.bar(x + w / 2, stress, w, label="stress start", color="#c44e52")
+    ax.set_xticks(x)
+    ax.set_xticklabels(names, rotation=20)
+    ax.set_ylabel("CVaR 95% tail loss")
+    ax.set_title("Tail hedge loss by starting regime")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# Interpretability figures
+# --------------------------------------------------------------------------- #
+def _proto_surface_params(proto, scaler) -> np.ndarray:
+    """Un-standardise prototype centres to (level, skew, curv, slope) columns."""
+    centers = proto.prototypes  # standardised
+    raw = centers * scaler.std + scaler.mean
+    return raw[:, :4]  # surf_level, surf_skew, surf_curv, surf_slope
+
+
+def plot_prototype_heatmaps(proto, scaler, path: Path) -> None:
+    params = _proto_surface_params(proto, scaler)
+    k = params.shape[0]
+    moneyness = np.linspace(0.8, 1.2, 25)
+    tenor_days = np.array([7, 14, 30, 60, 90, 180])
+    logm = np.log(moneyness)
+    ncol = min(4, k)
+    nrow = int(np.ceil(k / ncol))
+    fig, axes = plt.subplots(nrow, ncol, figsize=(3.0 * ncol, 2.6 * nrow), squeeze=False)
+    vmin, vmax = np.inf, -np.inf
+    grids = []
+    for j in range(k):
+        level, skew, curv, slope = params[j]
+        tau = tenor_days / 252.0
+        iv = (
+            level
+            + skew * logm[None, :]
+            + curv * (logm[None, :] ** 2)
+            + slope * np.log(tau / TAU0)[:, None]
+        )
+        iv = np.maximum(iv, 0.02)
+        grids.append(iv)
+        vmin, vmax = min(vmin, iv.min()), max(vmax, iv.max())
+    for j in range(nrow * ncol):
+        ax = axes[j // ncol][j % ncol]
+        if j >= k:
+            ax.axis("off")
+            continue
+        im = ax.imshow(grids[j], aspect="auto", origin="lower", cmap="viridis", vmin=vmin, vmax=vmax)
+        ax.set_title(f"prototype {j}", fontsize=9)
+        ax.set_xticks([0, 12, 24])
+        ax.set_xticklabels(["0.8", "1.0", "1.2"], fontsize=7)
+        ax.set_yticks(range(len(tenor_days)))
+        ax.set_yticklabels(tenor_days, fontsize=7)
+        if j % ncol == 0:
+            ax.set_ylabel("tenor (d)", fontsize=8)
+    fig.suptitle("Prototype implied-volatility surfaces", fontsize=12)
+    fig.colorbar(im, ax=axes, shrink=0.6, label="implied vol")
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_prototype_actions(proto, path: Path) -> None:
+    actions = proto.actions
+    k = actions.shape[0]
+    x = np.arange(k)
+    fig, ax = plt.subplots(figsize=(8, 4.0))
+    w = 0.38
+    ax.bar(x - w / 2, actions[:, 0], w, label="underlying shares", color="#4c72b0")
+    ax.bar(x + w / 2, actions[:, 1], w, label="hedge-option units", color="#dd8452")
+    ax.axhline(0, color="k", lw=0.6)
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"P{j}" for j in range(k)])
+    ax.set_ylabel("hedge holding")
+    ax.set_title("Learned hedge action per prototype")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_embedding(features_std: np.ndarray, labels: np.ndarray, centers: np.ndarray, path: Path) -> None:
+    # PCA via SVD.
+    x = features_std - features_std.mean(axis=0)
+    _, _, vt = np.linalg.svd(x, full_matrices=False)
+    proj = x @ vt[:2].T
+    cproj = (centers - features_std.mean(axis=0)) @ vt[:2].T
+    fig, ax = plt.subplots(figsize=(6.5, 5.5))
+    sample = np.random.default_rng(0).choice(len(proj), min(4000, len(proj)), replace=False)
+    ax.scatter(proj[sample, 0], proj[sample, 1], c=labels[sample], cmap="tab10", s=5, alpha=0.4)
+    ax.scatter(cproj[:, 0], cproj[:, 1], c="k", marker="X", s=120)
+    for j, (px, py) in enumerate(cproj):
+        ax.annotate(f"P{j}", (px, py), fontsize=9, fontweight="bold")
+    ax.set_xlabel("PC1")
+    ax.set_ylabel("PC2")
+    ax.set_title("Latent state embedding with prototypes")
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_example_trade(proto, scaler, bank, episode: int, path: Path) -> None:
+    x = scaler.transform(bank.features[episode])  # [L, F]
+    weights = proto.weights(x)  # [L, K]
+    holdings = proto.predict_holdings(x)  # [L, 2]
+    steps = np.arange(bank.horizon)
+    spot = bank.spot[episode, :-1]
+    # cumulative P&L of this single episode under the prototype hedge
+    h3 = holdings[None]
+    pnl_path = _episode_cum_pnl(bank, episode, holdings)
+
+    fig, axes = plt.subplots(4, 1, figsize=(8, 9), sharex=True)
+    axes[0].plot(steps, spot, color="k")
+    axes[0].set_ylabel("spot")
+    axes[0].set_title(f"Example trade audit — test episode {episode}")
+    axes[1].plot(steps, holdings[:, 0], label="shares", color="#4c72b0")
+    axes[1].plot(steps, holdings[:, 1], label="option units", color="#dd8452")
+    axes[1].axhline(0, color="k", lw=0.5)
+    axes[1].set_ylabel("holding")
+    axes[1].legend(fontsize=8)
+    top = weights.argmax(axis=1)
+    for j in range(proto.k):
+        axes[2].plot(steps, weights[:, j], label=f"P{j}", lw=1.2)
+    axes[2].set_ylabel("prototype weight")
+    axes[2].legend(fontsize=7, ncol=4)
+    axes[3].plot(steps, pnl_path, color="#8172b3")
+    axes[3].axhline(0, color="k", lw=0.5)
+    axes[3].set_ylabel("cumulative P&L")
+    axes[3].set_xlabel("hedge step (day)")
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+    return top
+
+
+def _episode_cum_pnl(bank, e: int, holdings: np.ndarray) -> np.ndarray:
+    cfg = bank.config
+    q_s, q_o = holdings[:, 0], holdings[:, 1]
+    ds = np.diff(bank.spot[e])
+    do = np.diff(bank.o_hedge[e])
+    dv = np.diff(bank.v_liab[e])
+    inc = -cfg.notional * dv + q_s * ds + q_o * do
+    prev_s = np.concatenate([[0.0], q_s[:-1]])
+    prev_o = np.concatenate([[0.0], q_o[:-1]])
+    cost = np.abs(q_s - prev_s) * bank.spot[e, :-1] * (cfg.underlying_cost_bps / 1e4)
+    cost += np.abs(q_o - prev_o) * bank.o_hedge[e, :-1] * (cfg.option_cost_bps / 1e4)
+    inc -= cost
+    inc[-1] -= np.abs(q_s[-1]) * bank.spot[e, -1] * (cfg.underlying_cost_bps / 1e4)
+    inc[-1] -= np.abs(q_o[-1]) * bank.o_hedge[e, -1] * (cfg.option_cost_bps / 1e4)
+    return np.cumsum(inc)
+
+
+def plot_prototype_activation(proto, scaler, bank, path: Path) -> None:
+    x = scaler.transform(bank.flat_features())
+    w = proto.weights(x)
+    share = w.mean(axis=0)
+    entropy = float(-(w * np.log(w + 1e-12)).sum(axis=1).mean())
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.bar(np.arange(proto.k), share, color="#8172b3")
+    ax.set_xlabel("prototype")
+    ax.set_ylabel("mean activation weight")
+    ax.set_title(f"Prototype activation (mean entropy = {entropy:.2f} nats)")
+    ax.set_xticks(np.arange(proto.k))
+    ax.set_xticklabels([f"P{j}" for j in range(proto.k)])
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+    return share, entropy
+
+
+# --------------------------------------------------------------------------- #
+# Tables
+# --------------------------------------------------------------------------- #
+def prototype_catalogue(proto, km, scaler, bank) -> pd.DataFrame:
+    raw = proto.prototypes * scaler.std + scaler.mean
+    counts = np.bincount(km.labels, minlength=proto.k)
+    stress_point = np.repeat(bank.regime_start, bank.horizon)
+    frac_stress = np.array(
+        [stress_point[km.labels == j].mean() if counts[j] else np.nan for j in range(proto.k)]
+    )
+    actions = proto.actions
+    rows = []
+    for j in range(proto.k):
+        rows.append(
+            {
+                "prototype": f"P{j}",
+                "n_assigned": int(counts[j]),
+                "share_pct": round(100 * counts[j] / counts.sum(), 1),
+                "frac_stress": round(float(frac_stress[j]), 2),
+                "iv_level": round(float(raw[j, 0]), 3),
+                "skew": round(float(raw[j, 1]), 3),
+                "curvature": round(float(raw[j, 2]), 3),
+                "term_slope": round(float(raw[j, 3]), 3),
+                "action_shares": round(float(actions[j, 0]), 3),
+                "action_option": round(float(actions[j, 1]), 3),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def comparison_table(pnl_by_method: dict[str, np.ndarray], turnover_by_method: dict[str, np.ndarray]) -> pd.DataFrame:
+    rows = []
+    for name, pnl in pnl_by_method.items():
+        m = compute_metrics(pnl, turnover_by_method.get(name))
+        m["method"] = name
+        rows.append(m)
+    df = pd.DataFrame(rows).set_index("method")
+    cols = ["mean_pnl", "median_pnl", "std_pnl", "var_95", "cvar_95", "cvar_99", "worst", "max_drawdown", "turnover", "utility"]
+    return df[[c for c in cols if c in df.columns]].round(4)

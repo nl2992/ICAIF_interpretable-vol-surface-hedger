@@ -20,7 +20,7 @@ import pandas as pd
 
 from ivsh.data.market import MarketConfig, simulate_market
 from ivsh.features.arbitrage import audit_market
-from ivsh.envs.hedging_env import EnvConfig, build_episode_bank, concat_banks
+from ivsh.envs.hedging_env import EnvConfig, build_episode_bank, concat_banks, with_costs
 from ivsh.evaluation import report as R
 from ivsh.evaluation.backtest import (
     GREEK_FEATURES,
@@ -349,6 +349,13 @@ def _run_ablations(trb, vlb, teb, scaler, cfg) -> pd.DataFrame:
         sclr = make_standardizer(trb_f)
         eval_proto(trb_f, vlb_f, teb_f, sclr, _tc(n_prototypes=cfg.proto_train.n_prototypes), f"features={label}")
 
+    # objective ablation: no CVaR term (maximise mean P&L only)
+    eval_proto(trb, vlb, teb, scaler, _tc(n_prototypes=cfg.proto_train.n_prototypes, cvar_weight=0.0), "objective=mean_only")
+
+    # transaction-cost ablation: train + evaluate with zero costs
+    z = lambda b: with_costs(b, 0.0, 0.0)  # noqa: E731
+    eval_proto(z(trb), z(vlb), z(teb), scaler, _tc(n_prototypes=cfg.proto_train.n_prototypes), "no_transaction_costs")
+
     return pd.DataFrame(rows)
 
 
@@ -502,6 +509,12 @@ def _write_ablation_report(reports, ablations) -> None:
         "- **features=greeks_only** removes the volatility surface (scalar Greeks only); "
         "**features=surface_only** removes the book Greeks. The gap to the full model quantifies "
         "the value of surface-regime information.",
+        "- **objective=mean_only** drops the CVaR term (maximise mean P&L only); the resulting "
+        "rise in tail loss quantifies what the CVaR objective buys.",
+        "- **no_transaction_costs** trains and evaluates with zero costs, isolating the cost drag.",
+        "",
+        "Note: the headline model is the full prototype hedger (`K=` the configured "
+        "value, all features, CVaR objective, with costs) reported in the final report.",
         "",
     ]
     (reports / "ablation_report.md").write_text("\n".join(lines))

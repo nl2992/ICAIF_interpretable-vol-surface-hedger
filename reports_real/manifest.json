@@ -1,30 +1,30 @@
 {
-  "experiment_id": "spy_2018_2020",
+  "experiment_id": "spy_2010_2023",
   "dataset_version": "synthetic-regime-sv-jump-v1",
   "model_version": "proto-surface-hedger-v1",
   "seed": 7,
   "split_id": "train24-val6-test12",
-  "n_train_episodes": 134,
-  "n_test_episodes": 60,
+  "n_train_episodes": 683,
+  "n_test_episodes": 289,
   "proto_history": {
-    "success": false,
-    "n_iter": 400,
-    "final_obj": -3.1219948243793176,
-    "train_mean_pnl": 3.5313896248343464,
-    "train_cvar": 0.6157698718695331
+    "success": true,
+    "n_iter": 293,
+    "final_obj": -1.4274186658245136,
+    "train_mean_pnl": 0.5772788044003236,
+    "train_cvar": 0.6319633832989465
   },
   "bb_history": {
     "success": false,
     "n_iter": 400,
-    "final_obj": -114.03896549887985,
-    "train_mean_pnl": 90.07175886633148,
-    "train_cvar": -35.36382530019568
+    "final_obj": -22.40821878751431,
+    "train_mean_pnl": 5.399845106145694,
+    "train_cvar": 0.1415666470340293
   },
-  "prototype_entropy": 0.20620326516988002,
+  "prototype_entropy": 0.11250888818810406,
   "anchor": true,
-  "market_desc": "real option panel (2018-01-02 to 2020-12-31), per-day surface fit, chronological split",
+  "market_desc": "real option panel (2010-01-04 to 2023-12-29), per-day surface fit, chronological split",
   "config": {
-    "experiment_id": "spy_2018_2020",
+    "experiment_id": "spy_2010_2023",
     "seed": 7,
     "n_days": 500,
     "train_seeds": [

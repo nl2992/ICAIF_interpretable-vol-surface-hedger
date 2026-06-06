@@ -5,3 +5,5 @@ K=16,1.6427,2.5257,0.1361
 K=32,1.8369,2.669,0.2407
 features=greeks_only,1.3444,1.7527,-0.1309
 features=surface_only,1.6046,1.956,-0.118
+objective=mean_only,42.362,58.7773,1.1469
+no_transaction_costs,1.4286,1.9698,0.2007

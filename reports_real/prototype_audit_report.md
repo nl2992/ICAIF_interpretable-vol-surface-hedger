@@ -6,18 +6,18 @@ Every hedge action is a similarity-weighted blend of a small set of learned vola
 
 | prototype | n_assigned | share_pct | frac_stress | iv_level | skew | curvature | term_slope | action_shares | action_option | example_date | top_period | n_dates |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P0 | 292 | 7.3 | 0.57 | 0.213 | -0.455 | 1.624 | -0.026 | 0.324 | -0.829 | 2018-12-18 | 2018-12 | 292 |
-| P1 | 434 | 10.8 | 0.79 | 0.164 | -0.372 | 1.758 | -0.011 | -0.383 | 0.653 | 2018-04-16 | 2019-01 | 434 |
-| P2 | 690 | 17.2 | 0.27 | 0.131 | -0.332 | 1.731 | -0.003 | -0.757 | 0.97 | 2019-02-20 | 2019-02 | 690 |
-| P3 | 508 | 12.6 | 0.44 | 0.17 | -0.401 | 1.383 | -0.012 | -0.24 | 0.59 | 2018-04-25 | 2019-05 | 508 |
-| P4 | 476 | 11.8 | 0.15 | 0.134 | -0.386 | 1.805 | -0.005 | -0.53 | 1.197 | 2018-05-07 | 2018-07 | 476 |
-| P5 | 448 | 11.1 | 0.33 | 0.17 | -0.402 | 1.504 | -0.011 | -0.22 | 0.632 | 2018-04-11 | 2019-08 | 448 |
-| P6 | 27 | 0.7 | 0.63 | 0.277 | -0.445 | 1.18 | -0.046 | 1.492 | 0.793 | 2018-02-08 | 2018-02 | 27 |
-| P7 | 1145 | 28.5 | 0.04 | 0.127 | -0.342 | 1.778 | -0.003 | -0.441 | 1.383 | 2018-07-31 | 2018-08 | 1145 |
+| P0 | 5379 | 26.3 | 0.07 | 0.131 | -0.421 | 0.993 | -0 | -0.02 | -0.001 | 2015-06-19 | 2017-06 | 5379 |
+| P1 | 3819 | 18.6 | 0.03 | 0.175 | -0.365 | 0.56 | 0.002 | -0.008 | -0.014 | 2010-12-21 | 2012-03 | 3819 |
+| P2 | 1624 | 7.9 | 0.16 | 0.206 | -0.435 | 0.514 | -0.006 | -0.044 | -0.021 | 2011-06-28 | 2011-06 | 1624 |
+| P3 | 2284 | 11.1 | 0.05 | 0.152 | -0.42 | 0.691 | -0 | -0.007 | 0.018 | 2015-03-13 | 2014-04 | 2284 |
+| P4 | 1385 | 6.8 | 0.75 | 0.251 | -0.459 | 0.285 | -0.004 | -0.009 | -0.01 | 2010-06-18 | 2011-10 | 1385 |
+| P5 | 3874 | 18.9 | 0.2 | 0.148 | -0.376 | 0.886 | 0.001 | -0.005 | -0.001 | 2014-02-28 | 2013-05 | 3874 |
+| P6 | 637 | 3.1 | 0.55 | 0.308 | -0.484 | 0.348 | -0.026 | 0.059 | -0.009 | 2010-06-07 | 2011-09 | 637 |
+| P7 | 1488 | 7.3 | 0.4 | 0.18 | -0.477 | 1.211 | -0.016 | -0.047 | -0.006 | 2015-12-09 | 2018-02 | 1488 |
 
 `iv_level / skew / curvature / term_slope` are the prototype's volatility-surface factors; `action_shares / action_option` are its learned hedge holdings.
 
-Mean prototype-activation entropy: **0.21 nats** (0 = always one prototype, ln(K) = uniform).
+Mean prototype-activation entropy: **0.11 nats** (0 = always one prototype, ln(K) = uniform).
 
 ![Prototype surfaces](figures/prototype_surfaces.png)
 ![Prototype actions](figures/prototype_actions.png)
@@ -26,8 +26,8 @@ Mean prototype-activation entropy: **0.21 nats** (0 = always one prototype, ln(K
 
 ## Example trade audit
 
-Test episode 0 (a stressed path where the naive delta hedge suffers a large loss). The panels show the spot path, the prototype hedge holdings, the prototype activation weights through time, and the cumulative hedged P&L.
+Test episode 156 (a stressed path where the naive delta hedge suffers a large loss). The panels show the spot path, the prototype hedge holdings, the prototype activation weights through time, and the cumulative hedged P&L.
 
 ![Example trade](figures/example_trade.png)
 
-Dominant prototype along this path: 6.
+Dominant prototype along this path: 7.

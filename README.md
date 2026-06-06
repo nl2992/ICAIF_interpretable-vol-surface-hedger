@@ -27,25 +27,28 @@ bootstrap and Wilcoxon tests.
 
 *(test set; lower CVaR / worst / turnover is better, higher utility is better. Reproduce with the command below.)*
 
-### Real data — SPY 2018–2020 (train pre-COVID, test on 2020)
+### Real data — SPY 2010–2023 (3,499 trading days; train ≈2010–18, test ≈2020–23)
 
-On real OptionsDX SPY options (surface fit per day, chronological split, learned
-policies run as **bounded residuals on the delta-vega hedge** so they stay genuine
-hedges on a non-martingale market):
+On 14 years of real OptionsDX SPY options (3.5M cleaned OTM quotes, surface fit per
+day, chronological split, learned policies run as **bounded residuals on the
+delta-vega hedge** so they stay genuine hedges on a non-martingale market). The
+held-out test window spans COVID-2020 and the 2022 bear market:
 
-| policy | mean P&L | CVaR₉₅ | CVaR₉₉ | turnover | utility |
-|---|---|---|---|---|---|
-| delta | 1.25 | 12.27 | 13.25 | 923 | −11.02 |
-| delta-vega | 1.25 | 4.07 | 4.20 | 808 | −2.82 |
-| black-box MLP | 31.3 | 38.06 | 39.90 | 11,314 | −6.72 |
-| **prototype (ours)** | 11.0 | **3.98** | 7.66 | 2,089 | **+7.03** |
+| policy | mean P&L | CVaR₉₅ | CVaR₉₉ | max-DD | turnover | utility |
+|---|---|---|---|---|---|---|
+| delta | 1.16 | 4.71 | 6.60 | 85.4 | 1,100 | −3.55 |
+| delta-vega | 0.95 | 2.84 | 4.75 | 45.6 | 879 | −1.90 |
+| black-box MLP | 3.65 | 30.23 | 37.86 | 604.8 | 5,054 | −26.58 |
+| **prototype (ours)** | 0.86 | **2.38** | **4.40** | **17.7** | 928 | **−1.52** |
 
-The interpretable prototype hedger **matches/edges delta-vega on CVaR₉₅ and wins on
-cost-adjusted utility**, while the flexible **black-box overfits the in-sample drift
-and blows up out-of-sample** (CVaR₉₅ 38, 11k turnover) — the constrained, auditable
-policy generalises; the black box does not. Real-data results are noisier and
-regime-dependent (the 2020 test period rewards convexity); see
-[`reports_real/`](reports_real/). Reproduce with `scripts/run_real_data.py` (below).
+The interpretable prototype hedger **beats delta-vega on every tail metric** (−16%
+CVaR₉₅, **−61% max-drawdown**) and on cost-adjusted utility, at comparable mean and
+turnover — while the flexible **black-box overfits in-sample drift and blows up
+out-of-sample** (CVaR₉₅ 30, 5k turnover). The constrained, auditable policy
+generalises; the black box does not. Ablation: dropping the CVaR term (mean-only
+objective) explodes the tail to CVaR₉₅ **87.6**, quantifying what the risk
+objective buys. Full report set in [`reports_real/`](reports_real/); a focused
+SPY 2018–2020 COVID subset is reproducible via `scripts/run_real_data.py`.
 
 ## Method
 

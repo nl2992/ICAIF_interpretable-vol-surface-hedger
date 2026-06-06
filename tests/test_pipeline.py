@@ -32,6 +32,11 @@ def test_pipeline_runs_and_writes_reports(tmp_path):
     assert (reports / "figures" / "prototype_surfaces.png").exists()
     assert (reports / "tables" / "model_comparison.csv").exists()
     assert (tmp_path / "checkpoints" / "proto_surface_hedger_best.npz").exists()
+    # paper artefacts
+    for fig in ("architecture.png", "cumulative_pnl.png", "activation_timeline.png", "cvar_ci.png"):
+        assert (reports / "figures" / fig).exists()
+    for tab in ("cvar_confidence.csv", "significance.csv", "hyperparameters.csv", "test_pnl_paths.csv"):
+        assert (reports / "tables" / tab).exists()
     # every method has finite metrics on the held-out set
     for name in ("unhedged", "delta", "delta_vega", "blackbox", "prototype"):
         assert np.isfinite(res["metrics"][name]["cvar_95"])

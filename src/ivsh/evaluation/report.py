@@ -19,6 +19,7 @@ import pandas as pd  # noqa: E402
 
 from ivsh.data.market import TAU0  # noqa: E402
 from ivsh.evaluation.metrics import compute_metrics  # noqa: E402
+from ivsh.training.objective import cvar_from_pnl  # noqa: E402
 
 _METHOD_COLORS = {
     "unhedged": "#999999",
@@ -324,3 +325,118 @@ def comparison_table(pnl_by_method: dict[str, np.ndarray], turnover_by_method: d
     df = pd.DataFrame(rows).set_index("method")
     cols = ["mean_pnl", "median_pnl", "std_pnl", "var_95", "cvar_95", "cvar_99", "worst", "max_drawdown", "turnover", "utility"]
     return df[[c for c in cols if c in df.columns]].round(4)
+
+
+# --------------------------------------------------------------------------- #
+# Paper figures (architecture, time series, significance)
+# --------------------------------------------------------------------------- #
+def plot_architecture(path: Path) -> None:
+    """Schematic of the prototype surface-hedger pipeline."""
+    from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+
+    steps = [
+        ("Volatility-surface state", "moneyness x tenor IV grid + book/hedge Greeks"),
+        ("Standardised features", "level, skew, curvature, term-slope, RV, Greeks (train-fit scaler)"),
+        ("Latent state  z", "leak-free, chronological"),
+        ("Prototype similarity", "softmax(-||z - p_k||^2 / T),  p_k = k-means medoids"),
+        ("Bounded prototype actions  a_k", "tanh-bounded; interpretable per-regime hedge"),
+        ("Hedge action = Σ_k w_k a_k", "(+ delta-vega base when anchored)"),
+        ("Hedging environment", "daily rebalance, transaction costs"),
+        ("Cost-adjusted CVaR objective", "max E[PnL] - λ·CVaR_α(loss)  (Rockafellar–Uryasev)"),
+    ]
+    fig, ax = plt.subplots(figsize=(7.6, 10))
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, len(steps) * 1.25)
+    ax.axis("off")
+    y = len(steps) * 1.25 - 0.7
+    centers = []
+    for title, sub in steps:
+        box = FancyBboxPatch(
+            (1.2, y - 0.42), 7.6, 0.84, boxstyle="round,pad=0.04,rounding_size=0.12",
+            linewidth=1.4, edgecolor="#33415c", facecolor="#eef2ff",
+        )
+        ax.add_patch(box)
+        ax.text(5.0, y + 0.12, title, ha="center", va="center", fontsize=11, fontweight="bold")
+        ax.text(5.0, y - 0.2, sub, ha="center", va="center", fontsize=8, color="#444")
+        centers.append(y)
+        y -= 1.25
+    for y0, y1 in zip(centers[:-1], centers[1:]):
+        ax.add_patch(FancyArrowPatch((5.0, y0 - 0.44), (5.0, y1 + 0.44),
+                                     arrowstyle="-|>", mutation_scale=16, color="#33415c", linewidth=1.4))
+    ax.text(5.0, len(steps) * 1.25 - 0.15, "Interpretable Prototype Volatility-Surface Hedger",
+            ha="center", fontsize=12, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_cumulative_pnl(pnl_by_method, order, dates, path: Path) -> None:
+    """Cumulative hedged P&L over the test set (episodes ordered by start day)."""
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    x = dates[order] if dates is not None else np.arange(len(order))
+    for name, pnl in pnl_by_method.items():
+        ax.plot(x, np.cumsum(np.asarray(pnl)[order]), label=name, color=_color(name), lw=1.6)
+    ax.axhline(0, color="k", lw=0.5, ls=":")
+    ax.set_ylabel("cumulative hedged P&L")
+    ax.set_xlabel("episode start date" if dates is not None else "test episode (chronological)")
+    ax.set_title("Cumulative hedged P&L (test set)")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_activation_timeline(weights_ep, order, regime, dates, path: Path) -> None:
+    """Stacked prototype-activation weights over the test period."""
+    w = weights_ep[order]  # [E, K]
+    x = dates[order] if dates is not None else np.arange(len(order))
+    k = w.shape[1]
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.stackplot(x, *[w[:, j] for j in range(k)], labels=[f"P{j}" for j in range(k)],
+                 colors=plt.cm.tab10(np.linspace(0, 1, k)))
+    # shade stressed episodes lightly along the top
+    reg = np.asarray(regime)[order]
+    ax.fill_between(x, 1.0, 1.03, where=reg == 1, color="red", alpha=0.5, step="mid")
+    ax.set_ylim(0, 1.03)
+    ax.set_ylabel("prototype activation weight")
+    ax.set_xlabel("episode start date" if dates is not None else "test episode (chronological)")
+    ax.set_title("Prototype activation over time (red band = stressed start)")
+    ax.legend(fontsize=7, ncol=k, loc="lower center")
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def cvar_confidence(pnl_by_method, alpha=0.95, n_boot=2000, ci=0.95, seed=7) -> pd.DataFrame:
+    """Per-method CVaR with bootstrap confidence intervals."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for name, pnl in pnl_by_method.items():
+        pnl = np.asarray(pnl)
+        n = len(pnl)
+        boot = np.array([cvar_from_pnl(pnl[rng.integers(0, n, n)], alpha) for _ in range(n_boot)])
+        rows.append({
+            "method": name,
+            "cvar": cvar_from_pnl(pnl, alpha),
+            "ci_low": float(np.quantile(boot, (1 - ci) / 2)),
+            "ci_high": float(np.quantile(boot, 1 - (1 - ci) / 2)),
+        })
+    return pd.DataFrame(rows).set_index("method")
+
+
+def plot_cvar_ci(pnl_by_method, path: Path, alpha=0.95, seed=7) -> pd.DataFrame:
+    df = cvar_confidence(pnl_by_method, alpha=alpha, seed=seed)
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    names = list(df.index)
+    y = df["cvar"].to_numpy()
+    lo = y - df["ci_low"].to_numpy()
+    hi = df["ci_high"].to_numpy() - y
+    ax.bar(names, y, color=[_color(n) for n in names],
+           yerr=[lo, hi], capsize=5, edgecolor="k", linewidth=0.5)
+    ax.set_ylabel(f"CVaR{int(alpha*100)} tail loss (95% bootstrap CI)")
+    ax.set_title("Tail loss with bootstrap confidence intervals")
+    ax.tick_params(axis="x", rotation=20)
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+    return df

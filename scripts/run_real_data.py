@@ -50,9 +50,10 @@ def main() -> None:
     # Clean each input pattern (e.g. one year) separately to bound peak memory,
     # then concatenate the (small) cleaned panels.
     parts = []
+    summaries = []
     for pat in args.data:
         panel = load_optionsdx(pat)
-        c, _ = clean_option_panel(
+        c, summ = clean_option_panel(
             panel,
             max_rel_spread=0.5,
             iv_bounds=(0.03, 1.5),
@@ -61,8 +62,13 @@ def main() -> None:
             min_volume=1,
         )
         parts.append(c)
+        summaries.append(summ.table)
         print(f"  {pat}: {len(panel):,} raw -> {len(c):,} clean")
     clean = pd.concat(parts, ignore_index=True).sort_values("date").reset_index(drop=True)
+    # aggregate cleaning funnel across inputs
+    funnel = (
+        pd.concat(summaries).groupby("filter", sort=False)["removed"].sum().reset_index()
+    )
     print(f"total: {len(clean):,} clean OTM quotes; {clean['date'].nunique()} dates "
           f"({clean['date'].min().date()} -> {clean['date'].max().date()})")
 
@@ -84,6 +90,7 @@ def main() -> None:
     )
     print(f"anchor (residual on delta-vega): {anchor}; residual scale: {rscale}")
     res = run_experiment_real(cfg, clean, rate=args.rate, div=args.div, surface_method=args.surface)
+    funnel.to_csv(_pl.Path(args.reports_dir) / "tables" / "cleaning_funnel.csv", index=False)
     print(res["comparison"].to_string())
     print(f"\nReports written to {args.reports_dir}/")
 

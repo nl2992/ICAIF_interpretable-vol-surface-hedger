@@ -1,0 +1,4 @@
+comparison,delta_cvar95,ci_low,ci_high,boot_p,wilcoxon_p
+prototype_minus_delta,-2.3249,-3.2522,-1.2856,0.0,2e-06
+prototype_minus_delta_vega,-0.4623,-0.9271,0.0764,0.086,0.000244
+prototype_minus_blackbox,-27.8432,-31.4101,-23.6827,0.0,3e-06

@@ -1,0 +1,13 @@
+filter,removed
+input,0
+ask<=0,106588
+bid<0,0
+crossed_bid>ask,33350
+missing_strike,0
+expired/invalid_ttm,337839
+nonpositive_iv,1195321
+"iv_outside[0.03,1.5]",663950
+"moneyness_outside[0.8,1.2]",5407813
+in_the_money,5234564
+rel_spread>0.5,673672
+volume<1,1731887

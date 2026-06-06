@@ -41,14 +41,31 @@ held-out test window spans COVID-2020 and the 2022 bear market:
 | black-box MLP | 3.65 | 30.23 | 37.86 | 604.8 | 5,054 | −26.58 |
 | **prototype (ours)** | 0.86 | **2.38** | **4.40** | **17.7** | 928 | **−1.52** |
 
-The interpretable prototype hedger **beats delta-vega on every tail metric** (−16%
-CVaR₉₅, **−61% max-drawdown**) and on cost-adjusted utility, at comparable mean and
-turnover — while the flexible **black-box overfits in-sample drift and blows up
-out-of-sample** (CVaR₉₅ 30, 5k turnover). The constrained, auditable policy
-generalises; the black box does not. Ablation: dropping the CVaR term (mean-only
-objective) explodes the tail to CVaR₉₅ **87.6**, quantifying what the risk
-objective buys. Full report set in [`reports_real/`](reports_real/); a focused
-SPY 2018–2020 COVID subset is reproducible via `scripts/run_real_data.py`.
+What is **statistically significant** (paired bootstrap, `tables/significance.csv`):
+the prototype hedger ≫ delta (Δcvar₉₅ −2.3, p≈0) and ≫ the black-box deep hedger
+(−27.8, p≈0) — the constrained, auditable policy **generalises out-of-sample while
+the flexible black box overfits in-sample drift and blows up** (CVaR₉₅ 30, 5k
+turnover). Versus the strongest classical baseline, **delta-vega, the tail
+improvement is directional but not significant** (Δcvar₉₅ −0.46, 95% CI
+[−0.93, +0.08], bootstrap p=0.086) — on the tail it is a slight-but-not-proven
+edge / statistical tie, with better max-drawdown and utility. On this long real
+sample the learned residual is small (activation entropy ≈0.11): the prototype
+essentially **reproduces delta-vega with a conservative trim** rather than learning
+dramatically different regime actions (the rich regime-specific behaviour shows up
+on the synthetic market). Ablation: dropping the CVaR term explodes the tail to
+CVaR₉₅ **87.6**. Full report set in [`reports_real/`](reports_real/); see
+[`reports/ICAIF_report.md`](reports/ICAIF_report.md) and the LaTeX draft in
+[`paper/`](paper/) for the write-up.
+
+**Robustness analyses** (`scripts/run_real_analysis.py`): across 5 seeds the
+prototype is tight (CVaR₉₅ 2.36±0.11) while the black box is wildly unstable
+(10.0±11.4). A strict **walk-forward** (train on all prior years, test each next
+year) is honest about fragility: the prototype beats delta-vega in only **4/10**
+years (delta-vega is the more consistent baseline) and its anchored residual
+**added risk in the COVID-2020 fold** — though the black box is catastrophic in
+both 2020 and 2022 crises. **Net takeaway: interpretable prototype hedging is far
+more robust than a black-box deep hedger and roughly on par with delta-vega — the
+contribution is interpretability + robustness, not raw outperformance.**
 
 ## Method
 

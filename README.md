@@ -27,6 +27,26 @@ bootstrap and Wilcoxon tests.
 
 *(test set; lower CVaR / worst / turnover is better, higher utility is better. Reproduce with the command below.)*
 
+### Real data — SPY 2018–2020 (train pre-COVID, test on 2020)
+
+On real OptionsDX SPY options (surface fit per day, chronological split, learned
+policies run as **bounded residuals on the delta-vega hedge** so they stay genuine
+hedges on a non-martingale market):
+
+| policy | mean P&L | CVaR₉₅ | CVaR₉₉ | turnover | utility |
+|---|---|---|---|---|---|
+| delta | 1.25 | 12.27 | 13.25 | 923 | −11.02 |
+| delta-vega | 1.25 | 4.07 | 4.20 | 808 | −2.82 |
+| black-box MLP | 31.3 | 38.06 | 39.90 | 11,314 | −6.72 |
+| **prototype (ours)** | 11.0 | **3.98** | 7.66 | 2,089 | **+7.03** |
+
+The interpretable prototype hedger **matches/edges delta-vega on CVaR₉₅ and wins on
+cost-adjusted utility**, while the flexible **black-box overfits the in-sample drift
+and blows up out-of-sample** (CVaR₉₅ 38, 11k turnover) — the constrained, auditable
+policy generalises; the black box does not. Real-data results are noisier and
+regime-dependent (the 2020 test period rewards convexity); see
+[`reports_real/`](reports_real/). Reproduce with `scripts/run_real_data.py` (below).
+
 ## Method
 
 - **Market.** Regime-switching stochastic-volatility + jump model that emits a
@@ -131,6 +151,20 @@ panel, summary = clean_quotes(panel)                        # crossed/stale/expi
 market = market_from_option_panel(panel, rate=0.0, div=0.0) # -> MarketPath
 bank = build_episode_bank(market, EnvConfig())              # -> drop into the pipeline
 ```
+
+**OptionsDX SPY (used for the real run above):**
+
+```bash
+# raw monthly files extracted under data/raw/spy/
+python scripts/run_real_data.py \
+    --data "data/raw/spy/spy_eod_2018*.txt" "data/raw/spy/spy_eod_2019*.txt" \
+           "data/raw/spy/spy_eod_2020*.txt" \
+    --reports-dir reports_real --surface svi
+```
+
+`ivsh.data.loaders.optionsdx_to_panel` reshapes the wide call+put chains to the
+long panel; the driver cleans to a clean OTM smile, fits the SVI surface, and runs
+the anchored study.
 
 Expected panel columns: `date, spot, strike`, an implied vol (`iv`, or `mid` +
 `option_type` to imply it), and time to maturity (`ttm_years` | `ttm_days` |

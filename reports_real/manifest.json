@@ -1,0 +1,122 @@
+{
+  "experiment_id": "spy_2018_2020",
+  "dataset_version": "synthetic-regime-sv-jump-v1",
+  "model_version": "proto-surface-hedger-v1",
+  "seed": 7,
+  "split_id": "train24-val6-test12",
+  "n_train_episodes": 134,
+  "n_test_episodes": 60,
+  "proto_history": {
+    "success": false,
+    "n_iter": 400,
+    "final_obj": -3.1219948243793176,
+    "train_mean_pnl": 3.5313896248343464,
+    "train_cvar": 0.6157698718695331
+  },
+  "bb_history": {
+    "success": false,
+    "n_iter": 400,
+    "final_obj": -114.03896549887985,
+    "train_mean_pnl": 90.07175886633148,
+    "train_cvar": -35.36382530019568
+  },
+  "prototype_entropy": 0.20620326516988002,
+  "anchor": true,
+  "market_desc": "real option panel (2018-01-02 to 2020-12-31), per-day surface fit, chronological split",
+  "config": {
+    "experiment_id": "spy_2018_2020",
+    "seed": 7,
+    "n_days": 500,
+    "train_seeds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      123
+    ],
+    "val_seeds": [
+      150,
+      151,
+      152,
+      153,
+      154,
+      155
+    ],
+    "test_seeds": [
+      200,
+      201,
+      202,
+      203,
+      204,
+      205,
+      206,
+      207,
+      208,
+      209,
+      210,
+      211
+    ],
+    "env": {
+      "liab_tenor_days": 30,
+      "hedge_tenor_days": 60,
+      "option_type": "call",
+      "rebalance_every": 1,
+      "episode_stride": 3,
+      "underlying_cost_bps": 1.0,
+      "option_cost_bps": 30.0,
+      "notional": 1.0
+    },
+    "proto_train": {
+      "cvar_alpha": 0.95,
+      "cvar_weight": 1.0,
+      "turnover_weight": 0.0,
+      "max_iter": 400,
+      "seed": 7,
+      "l2": 0.001,
+      "anchor": true,
+      "n_prototypes": 8,
+      "action_scale": 1.5,
+      "hidden": 16
+    },
+    "bb_train": {
+      "cvar_alpha": 0.95,
+      "cvar_weight": 1.0,
+      "turnover_weight": 0.0,
+      "max_iter": 400,
+      "seed": 7,
+      "l2": 0.03,
+      "anchor": true,
+      "n_prototypes": 8,
+      "action_scale": 1.5,
+      "hidden": 16
+    },
+    "n_prototypes_sweep": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "reports_dir": "reports_real",
+    "checkpoints_dir": "checkpoints",
+    "run_ablations": true
+  }
+}

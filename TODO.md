@@ -31,6 +31,16 @@ require proprietary option data are scaffolded but deferred.
   (`smooth_panel_svi`); `ivsh.data.build_surface`: fixed-grid IV tensor +
   quality metrics (RMSE / max residual) + npz/zarr save. Loader exposes
   `surface_method="svi"`.
+- ✅ **Real-data end-to-end (Phase 6 / Step 6).** OptionsDX adapter
+  (`optionsdx_to_panel`, `load_optionsdx`), real-data filters (OTM-only, IV
+  bounds, moneyness band), `build_data_from_panel` (chronological split),
+  `scripts/run_real_data.py`. Ran on SPY 2018–2020 → `reports_real/`.
+- ✅ **Anchored residual hedging.** Learned policies as bounded residuals on the
+  delta-vega hedge (`TrainConfig.anchor`) so they remain genuine hedges on
+  non-martingale real markets.
+- ✅ **Date-annotated prototypes (Step 8 / Phase 13).** `prototype_date_annotations`
+  maps each prototype to the historical dates/regime it activates on (e.g.
+  P6 ≈ Feb-2018 volmageddon).
 - ✅ **Baselines.** Unhedged, delta, delta-vega. (`src/ivsh/baselines/`)
 - ✅ **Black-box deep hedger.** numpy MLP, same inputs/actions/costs/objective.
   (`src/ivsh/models/blackbox.py`)

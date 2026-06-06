@@ -8,9 +8,8 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-data/raw/
-data/interim/
-data/processed/
+data/*
+!data/.gitkeep
 results/*
 !results/.gitkeep
 notebooks/.ipynb_checkpoints/
@@ -19,4 +18,4 @@ notebooks/.ipynb_checkpoints/
 # figures and tables are committed as deliverables; checkpoints are not.
 artifacts/
 checkpoints/
-
+/CLAUDE.md

@@ -177,3 +177,89 @@ def market_from_option_panel(
         rate=rate,
         div=div,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Vendor adapters
+# --------------------------------------------------------------------------- #
+def _norm_cols(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df.columns = [str(c).strip().strip("[]").strip().upper() for c in df.columns]
+    return df
+
+
+def optionsdx_to_panel(df: pd.DataFrame) -> pd.DataFrame:
+    """Reshape an OptionsDX wide chain (call+put per strike row) to a long panel.
+
+    Output columns: ``date, spot, strike, expiry, ttm_days, option_type, bid, ask,
+    iv, volume`` — directly consumable by :func:`clean_option_panel` /
+    :func:`market_from_option_panel`. Column names are matched case-insensitively
+    and tolerate the bracketed OptionsDX style (e.g. ``[C_IV]``).
+    """
+    d = _norm_cols(df)
+
+    def col(*names):
+        for n in names:
+            if n in d.columns:
+                return d[n]
+        return None
+
+    date = col("QUOTE_DATE", "DATE")
+    spot = col("UNDERLYING_LAST", "SPOT")
+    strike = col("STRIKE")
+    expiry = col("EXPIRE_DATE", "EXPIRY")
+    dte = col("DTE", "TTM_DAYS")
+    if date is None or spot is None or strike is None:
+        raise ValueError("OptionsDX panel needs QUOTE_DATE, UNDERLYING_LAST and STRIKE columns")
+
+    base = pd.DataFrame(
+        {
+            "date": pd.to_datetime(date),
+            "spot": pd.to_numeric(spot, errors="coerce"),
+            "strike": pd.to_numeric(strike, errors="coerce"),
+        }
+    )
+    if expiry is not None:
+        base["expiry"] = pd.to_datetime(expiry)
+    if dte is not None:
+        base["ttm_days"] = pd.to_numeric(dte, errors="coerce")
+
+    frames = []
+    for prefix, otype in (("C", "call"), ("P", "put")):
+        bid = col(f"{prefix}_BID")
+        ask = col(f"{prefix}_ASK")
+        iv = col(f"{prefix}_IV")
+        vol = col(f"{prefix}_VOLUME", f"{prefix}_VOL")
+        if bid is None and ask is None and iv is None:
+            continue
+        leg = base.copy()
+        leg["option_type"] = otype
+        leg["bid"] = pd.to_numeric(bid, errors="coerce") if bid is not None else np.nan
+        leg["ask"] = pd.to_numeric(ask, errors="coerce") if ask is not None else np.nan
+        leg["iv"] = pd.to_numeric(iv, errors="coerce") if iv is not None else np.nan
+        if vol is not None:
+            leg["volume"] = pd.to_numeric(vol, errors="coerce")
+        frames.append(leg)
+
+    if not frames:
+        raise ValueError("no C_*/P_* quote columns found in OptionsDX panel")
+    out = pd.concat(frames, ignore_index=True)
+    return out.dropna(subset=["strike", "spot"]).reset_index(drop=True)
+
+
+def load_optionsdx(path: str | list[str]) -> pd.DataFrame:
+    """Read OptionsDX CSV/TXT files into a long panel.
+
+    ``path`` may be a single file, a glob, or a list of files/globs. Files are
+    read in sorted order so the resulting day index is chronological.
+    """
+    import glob
+
+    patterns = [path] if isinstance(path, str) else list(path)
+    paths: list[str] = []
+    for pat in patterns:
+        paths.extend(sorted(glob.glob(pat)) or [pat])
+    raw = pd.concat(
+        [pd.read_csv(p, skipinitialspace=True) for p in sorted(paths)], ignore_index=True
+    )
+    return optionsdx_to_panel(raw)

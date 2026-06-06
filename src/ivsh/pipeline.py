@@ -37,7 +37,8 @@ from ivsh.training.train import (
     fit_prototype,
     make_standardizer,
 )
-from ivsh.utils.splits import select_features
+from ivsh.data.loaders import market_from_option_panel
+from ivsh.utils.splits import chronological_split, select_features, subset
 
 DATASET_VERSION = "synthetic-regime-sv-jump-v1"
 MODEL_VERSION = "proto-surface-hedger-v1"
@@ -121,6 +122,50 @@ def build_data(cfg: ExperimentConfig) -> dict:
     return {"train": trb, "val": vlb, "test": teb, "scaler": scaler}
 
 
+def build_data_from_panel(
+    cfg: ExperimentConfig,
+    panel: pd.DataFrame,
+    rate: float = 0.0,
+    div: float = 0.0,
+    surface_method: str = "svi",
+    train_frac: float = 0.6,
+    val_frac: float = 0.15,
+) -> dict:
+    """Stage 1 (real data) — one cleaned option panel -> chronological banks.
+
+    Fits the parametric surface (SVI-denoised by default) to the panel, builds a
+    single-history episode bank, and splits it chronologically (train precedes
+    val precedes test, with a purge gap) into held-out future evaluation.
+    """
+    market = market_from_option_panel(panel, rate=rate, div=div, surface_method=surface_method)
+    bank = build_episode_bank(market, cfg.env)
+    split = chronological_split(bank, train_frac=train_frac, val_frac=val_frac)
+    trb, vlb, teb = subset(bank, split.train), subset(bank, split.val), subset(bank, split.test)
+    scaler = make_standardizer(trb)
+    day_to_date = np.array(sorted(pd.unique(pd.to_datetime(panel["date"]))))
+    return {
+        "train": trb,
+        "val": vlb,
+        "test": teb,
+        "scaler": scaler,
+        "audit_market": market,
+        "day_to_date": day_to_date,
+    }
+
+
+def run_experiment_real(
+    cfg: ExperimentConfig,
+    panel: pd.DataFrame,
+    rate: float = 0.0,
+    div: float = 0.0,
+    surface_method: str = "svi",
+) -> dict:
+    """Full real-data run: panel -> chronological banks -> train -> evaluate."""
+    data = build_data_from_panel(cfg, panel, rate=rate, div=div, surface_method=surface_method)
+    models = train_models(cfg, data)
+    return evaluate_and_report(cfg, data, models)
+
+
 def train_models(cfg: ExperimentConfig, data: dict) -> dict:
     """Stage 2 — fit the prototype and black-box hedgers."""
     trb, vlb, scaler = data["train"], data["val"], data["scaler"]
@@ -151,11 +196,13 @@ def evaluate_and_report(cfg: ExperimentConfig, data: dict, models: dict) -> dict
     proto_hist, bb_hist = models["proto_hist"], models["bb_hist"]
 
     # ---- evaluate on test ----
+    anchor_bb = cfg.bb_train.anchor
+    anchor_proto = cfg.proto_train.anchor
     results: dict[str, dict] = {}
     for name in ("unhedged", "delta", "delta_vega"):
         results[name] = run_baseline(teb, name)
-    results["blackbox"] = run_policy(bb, teb, scaler)
-    results["prototype"] = run_policy(proto, teb, scaler)
+    results["blackbox"] = run_policy(bb, teb, scaler, anchor=anchor_bb)
+    results["prototype"] = run_policy(proto, teb, scaler, anchor=anchor_proto)
 
     pnl_by = {k: v["pnl"] for k, v in results.items()}
     turn_by = {k: v["turnover"] for k, v in results.items()}
@@ -184,12 +231,16 @@ def evaluate_and_report(cfg: ExperimentConfig, data: dict, models: dict) -> dict
     if len(stress_idx) == 0:
         stress_idx = np.arange(teb.n_episodes)
     worst = stress_idx[np.argmin(results["delta"]["pnl"][stress_idx])]
-    top_protos = R.plot_example_trade(proto, scaler, teb, int(worst), figs / "example_trade.png")
+    top_protos = R.plot_example_trade(proto, scaler, teb, int(worst), figs / "example_trade.png", anchor=anchor_proto)
 
     # ---- tables ----
     comp = R.comparison_table(pnl_by, turn_by)
     comp.to_csv(tables / "model_comparison.csv")
     catalogue = R.prototype_catalogue(proto, km, scaler, trb)
+    day_to_date = data.get("day_to_date")
+    if day_to_date is not None:
+        annotations = R.prototype_date_annotations(km, trb, day_to_date)
+        catalogue = catalogue.merge(annotations, on="prototype", how="left")
     catalogue.to_csv(tables / "prototype_catalogue.csv", index=False)
 
     # ---- ablations ----
@@ -198,8 +249,11 @@ def evaluate_and_report(cfg: ExperimentConfig, data: dict, models: dict) -> dict
         ablations = _run_ablations(trb, vlb, teb, scaler, cfg)
         ablations.to_csv(tables / "ablation_metrics.csv", index=False)
 
-    # ---- static no-arbitrage audit (representative held-out path) ----
-    audit = audit_market(simulate_market(MarketConfig(n_days=cfg.n_days, seed=cfg.test_seeds[0])))
+    # ---- static no-arbitrage audit ----
+    audit_mkt = data.get("audit_market") or simulate_market(
+        MarketConfig(n_days=cfg.n_days, seed=cfg.test_seeds[0])
+    )
+    audit = audit_market(audit_mkt)
     (reports / "arbitrage_audit.md").write_text(audit.to_markdown())
     audit.per_day.to_csv(tables / "arbitrage_per_day.csv", index=False)
 
@@ -226,6 +280,14 @@ def evaluate_and_report(cfg: ExperimentConfig, data: dict, models: dict) -> dict
         "proto_history": proto_hist,
         "bb_history": bb_hist,
         "prototype_entropy": float(entropy),
+        "anchor": bool(anchor_proto),
+        "market_desc": (
+            f"real option panel ({np.datetime_as_string(day_to_date[0], unit='D')} to "
+            f"{np.datetime_as_string(day_to_date[-1], unit='D')}), per-day surface fit, "
+            "chronological split"
+            if day_to_date is not None
+            else "synthetic regime-switching stochastic-vol + jumps, zero carry (martingale)"
+        ),
         "config": _config_to_dict(cfg),
     }
     (reports / "manifest.json").write_text(json.dumps(manifest, indent=2, default=str))
@@ -258,16 +320,26 @@ def _config_to_dict(cfg: ExperimentConfig) -> dict:
 
 def _run_ablations(trb, vlb, teb, scaler, cfg) -> pd.DataFrame:
     rows = []
+    anchor = cfg.proto_train.anchor
+
+    def _tc(**kw):
+        return TrainConfig(
+            l2=cfg.proto_train.l2,
+            max_iter=cfg.proto_train.max_iter,
+            anchor=anchor,
+            action_scale=cfg.proto_train.action_scale,
+            **kw,
+        )
 
     def eval_proto(train_bank, val_bank, test_bank, sclr, tcfg, label):
         proto, _, _ = fit_prototype(train_bank, sclr, tcfg, val_bank=val_bank)
-        pnl = run_policy(proto, test_bank, sclr)["pnl"]
+        pnl = run_policy(proto, test_bank, sclr, anchor=anchor)["pnl"]
         m = compute_metrics(pnl)
         rows.append({"ablation": label, "cvar_95": round(m["cvar_95"], 4), "cvar_99": round(m["cvar_99"], 4), "mean_pnl": round(m["mean_pnl"], 4)})
 
     # K sweep (full features)
     for k in cfg.n_prototypes_sweep:
-        eval_proto(trb, vlb, teb, scaler, TrainConfig(n_prototypes=k, l2=cfg.proto_train.l2, max_iter=cfg.proto_train.max_iter), f"K={k}")
+        eval_proto(trb, vlb, teb, scaler, _tc(n_prototypes=k), f"K={k}")
 
     # feature ablations
     for label, feats in (("greeks_only", GREEK_FEATURES), ("surface_only", SURFACE_FEATURES)):
@@ -275,7 +347,7 @@ def _run_ablations(trb, vlb, teb, scaler, cfg) -> pd.DataFrame:
         vlb_f = select_features(vlb, feats)
         teb_f = select_features(teb, feats)
         sclr = make_standardizer(trb_f)
-        eval_proto(trb_f, vlb_f, teb_f, sclr, TrainConfig(n_prototypes=cfg.proto_train.n_prototypes, l2=cfg.proto_train.l2, max_iter=cfg.proto_train.max_iter), f"features={label}")
+        eval_proto(trb_f, vlb_f, teb_f, sclr, _tc(n_prototypes=cfg.proto_train.n_prototypes), f"features={label}")
 
     return pd.DataFrame(rows)
 
@@ -299,10 +371,16 @@ def _write_final_report(reports, cfg, comp, metrics_by, regime_by, stats, manife
         f"{cfg.env.liab_tenor_days}-day tenor, hedged daily to expiry.",
         f"- Hedge instruments: underlying + {cfg.env.hedge_tenor_days}-day ATM option.",
         f"- Costs: {cfg.env.underlying_cost_bps} bps underlying, {cfg.env.option_cost_bps} bps option (on traded notional).",
-        f"- Market: regime-switching stochastic-vol + jumps, zero carry (martingale). "
-        f"Trained on {manifest['n_train_episodes']} Monte-Carlo episodes, tested on "
-        f"{manifest['n_test_episodes']} held-out-path episodes.",
-        "- Objective: maximise E[P&L] − CVaR₉₅(loss) (Rockafellar–Uryasev), L2-regularised.",
+        f"- Market: {manifest.get('market_desc', 'regime-switching stochastic-vol + jumps, zero carry (martingale)')}. "
+        f"Trained on {manifest['n_train_episodes']} episodes, tested on "
+        f"{manifest['n_test_episodes']} held-out episodes.",
+        "- Objective: maximise E[P&L] − CVaR₉₅(loss) (Rockafellar–Uryasev), L2-regularised."
+        + (
+            " Learned policies are **bounded residuals on the delta-vega hedge** "
+            "(anchored), so they stay genuine hedges on non-martingale real data."
+            if manifest.get("anchor")
+            else ""
+        ),
         "",
         "## Model comparison (test set)",
         "",

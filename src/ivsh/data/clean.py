@@ -61,8 +61,17 @@ def clean_option_panel(
     min_volume: int = 0,
     min_open_interest: int = 0,
     drop_stale: bool = True,
+    iv_bounds: tuple[float, float] | None = None,
+    moneyness_band: tuple[float, float] | None = None,
+    otm_only: bool = False,
 ) -> tuple[pd.DataFrame, CleanSummary]:
-    """Clean a raw option-quote panel and report per-filter removals."""
+    """Clean a raw option-quote panel and report per-filter removals.
+
+    Real-data extras: ``iv_bounds`` drops implausible IVs (deep ITM quotes carry
+    garbage IV); ``moneyness_band`` keeps strikes within ``(low, high) * spot``;
+    ``otm_only`` keeps only out-of-the-money quotes (calls with K>=spot, puts with
+    K<=spot) — the standard clean smile.
+    """
     df = df.copy()
     n0 = len(df)
     rows = [("input", 0, n0, 0.0)]
@@ -89,6 +98,21 @@ def clean_option_panel(
 
     if "iv" in df.columns:
         drop(df["iv"].isna() | (df["iv"] <= 0), "nonpositive_iv")
+        if iv_bounds is not None:
+            lo, hi = iv_bounds
+            drop((df["iv"] < lo) | (df["iv"] > hi), f"iv_outside[{lo},{hi}]")
+
+    if moneyness_band is not None and {"strike", "spot"} <= set(df.columns):
+        lo, hi = moneyness_band
+        ratio = df["strike"] / df["spot"]
+        drop((ratio < lo) | (ratio > hi), f"moneyness_outside[{lo},{hi}]")
+
+    if otm_only and {"option_type", "strike", "spot"} <= set(df.columns):
+        ot = df["option_type"].astype(str).str.lower()
+        itm = ((ot == "call") & (df["strike"] < df["spot"])) | (
+            (ot == "put") & (df["strike"] > df["spot"])
+        )
+        drop(itm, "in_the_money")
 
     if has_quotes:
         spread = df["ask"] - df["bid"]

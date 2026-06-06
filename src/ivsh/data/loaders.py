@@ -24,11 +24,14 @@ See ``docs/data_checklist.md`` for the full data contract.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
 
+from ivsh.data.clean import (
+    CleanSummary,
+    clean_option_panel,
+    time_to_maturity_years as _ttm_years,
+)
 from ivsh.data.market import TAU0, TRADING_DAYS, MarketConfig, MarketPath
 from ivsh.pricing.black_scholes import implied_vol
 
@@ -45,61 +48,27 @@ def load_option_panel(path: str) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
-@dataclass
-class CleanSummary:
-    table: pd.DataFrame  # per-filter counts
-
-    def __str__(self) -> str:  # pragma: no cover - cosmetic
-        return self.table.to_string(index=False)
-
-
 def clean_quotes(
     df: pd.DataFrame,
     max_rel_spread: float = 0.5,
     min_ttm_years: float = 1e-3,
 ) -> tuple[pd.DataFrame, CleanSummary]:
-    """Apply standard option-quote filters and report removals per rule."""
-    df = df.copy()
-    rows = [("input", len(df))]
+    """Lightweight quote cleaning (thin wrapper over ``clean_option_panel``).
 
-    def drop(mask, name):
-        nonlocal df
-        keep = ~mask
-        df = df[keep]
-        rows.append((name, int(mask.sum())))
-
-    if {"bid", "ask"} <= set(df.columns):
-        drop(df["ask"] <= 0, "ask<=0")
-        drop(df["bid"] < 0, "bid<0")
-        drop(df["bid"] > df["ask"], "crossed (bid>ask)")
-        df["mid"] = 0.5 * (df["bid"] + df["ask"])
-        with np.errstate(divide="ignore", invalid="ignore"):
-            rel = (df["ask"] - df["bid"]) / df["mid"].replace(0, np.nan)
-        drop(rel > max_rel_spread, f"rel_spread>{max_rel_spread}")
-
-    ttm = _ttm_years(df)
-    drop(~np.isfinite(ttm) | (ttm <= min_ttm_years), "expired/invalid_ttm")
-    drop(df["strike"].isna(), "missing_strike")
-
-    summary = CleanSummary(pd.DataFrame(rows, columns=["filter", "removed"]))
-    return df.reset_index(drop=True), summary
+    For the full Phase-3 cleaner (liquidity/stale filters, summary table, parquet
+    output) use :func:`ivsh.data.clean.clean_option_panel` directly.
+    """
+    return clean_option_panel(
+        df,
+        max_rel_spread=max_rel_spread,
+        min_ttm_years=min_ttm_years,
+        drop_stale=False,
+    )
 
 
 # --------------------------------------------------------------------------- #
 # Panel -> MarketPath
 # --------------------------------------------------------------------------- #
-def _ttm_years(df: pd.DataFrame) -> np.ndarray:
-    if "ttm_years" in df.columns:
-        return df["ttm_years"].to_numpy(dtype=float)
-    if "ttm_days" in df.columns:
-        return df["ttm_days"].to_numpy(dtype=float) / 365.25
-    if "expiry" in df.columns:
-        exp = pd.to_datetime(df["expiry"])
-        dat = pd.to_datetime(df["date"])
-        return (exp - dat).dt.days.to_numpy(dtype=float) / 365.25
-    raise ValueError("panel must provide one of: ttm_years, ttm_days, or expiry")
-
-
 def _ensure_iv(df: pd.DataFrame, ttm: np.ndarray, rate: float, div: float) -> np.ndarray:
     if "iv" in df.columns and df["iv"].notna().all():
         return df["iv"].to_numpy(dtype=float)

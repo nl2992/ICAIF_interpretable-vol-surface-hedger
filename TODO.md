@@ -20,6 +20,12 @@ require proprietary option data are scaffolded but deferred.
   (`src/ivsh/envs/hedging_env.py`)
 - ✅ **Features.** Surface factors, term/skew/curvature, realised vol, book and
   hedge-instrument Greeks; leak-free standardisation fit on train only.
+- ✅ **Quote cleaning (Phase 3).** `ivsh.data.clean.clean_option_panel`:
+  crossed/negative/zero, missing/expired, non-positive IV, abs/rel spread,
+  liquidity and stale filters with a per-rule removal summary; mid / ttm /
+  forward / log-moneyness features; parquet output to `data/interim/`.
+- ✅ **Greeks & parity (Phase 4).** `ivsh.features.greeks`: panel-level
+  delta..volga over the BS engine, plus put-call-parity residual diagnostics.
 - ✅ **Baselines.** Unhedged, delta, delta-vega. (`src/ivsh/baselines/`)
 - ✅ **Black-box deep hedger.** numpy MLP, same inputs/actions/costs/objective.
   (`src/ivsh/models/blackbox.py`)

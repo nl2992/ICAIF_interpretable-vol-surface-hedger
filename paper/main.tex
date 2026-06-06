@@ -1,0 +1,465 @@
+%% ICAIF-style paper backbone for the Interpretable Volatility-Surface Hedger.
+%% Format intentionally mirrors recent ICAIF submissions (acmart, sigconf).
+%% All numbers/figures are produced by the pipeline in this repository
+%% (reports/ = synthetic study, reports_real/ = real SPY study) and are
+%% reproducible via `make run` and `scripts/run_real_data.py`.
+\documentclass[sigconf,nonacm]{acmart}
+
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\graphicspath{{figures/}{../reports/figures/}{../reports_real/figures/}}
+
+%% --- Macro for "to be finalised" numbers; keeps drafts honest. ---
+\newcommand{\TODO}[1]{\textcolor{red}{[\textsc{todo}: #1]}}
+\usepackage{xcolor}
+
+\begin{document}
+
+\title{Hedging the Surface: Interpretable Volatility-Surface Prototypes
+for Tail-Risk-Aware Option Hedging}
+
+%% Replace with the final author block before submission.
+\author{Nigel Li}
+\affiliation{%
+  \institution{Columbia University}
+  \city{New York}
+  \state{NY}
+  \country{USA}}
+\email{nl2992@columbia.edu}
+
+\renewcommand{\shortauthors}{Li}
+
+\begin{abstract}
+Deep hedging learns effective option-hedging policies under market frictions,
+but its reliance on black-box neural networks limits trust, auditability and
+regulatory acceptance---and, as we show, can generalise poorly out of sample.
+We study whether an \emph{interpretable, prototype-based hedger keyed on the
+implied-volatility-surface regime} can reduce \emph{tail} hedging losses
+relative to Black--Scholes delta and delta--vega hedging while remaining
+competitive with a black-box deep hedger. Each market state is encoded from the
+implied-volatility surface (level, skew, curvature, term slope) together with
+book and hedge-instrument Greeks, compared against a small set of learned
+\emph{prototypes} (k-means medoids in standardised feature space); the hedge
+action is a similarity-weighted blend of bounded per-prototype actions, so every
+trade is traceable to named volatility regimes. Policies are trained under a
+cost-adjusted Conditional Value-at-Risk (CVaR) objective in the smooth
+Rockafellar--Uryasev form with analytic gradients. On a controlled
+regime-switching synthetic market the prototype hedger reduces $\mathrm{CVaR}_{95}$
+by $53\%$ versus delta and $36\%$ versus delta--vega and edges the black box,
+with significance under paired bootstrap and Wilcoxon tests. On \textbf{14 years
+of real SPY options (2010--2023, 3.5M cleaned quotes)}, run as bounded residuals
+on the delta--vega hedge, it beats delta--vega on \emph{every} tail metric
+($-16\%$ $\mathrm{CVaR}_{95}$, $-61\%$ max-drawdown) and on cost-adjusted utility
+at comparable mean and turnover, while the flexible black box overfits in-sample
+drift and blows up out-of-sample. An ablation removing the CVaR term inflates
+$\mathrm{CVaR}_{95}$ from $\sim$2.4 to \textbf{87.6}, quantifying the value of the
+risk objective. Transparency and tail-risk performance are not mutually
+exclusive.
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+<concept><concept_id>10010147.10010257</concept_id>
+<concept_desc>Computing methodologies~Machine learning</concept_desc>
+<concept_significance>500</concept_significance></concept>
+<concept><concept_id>10003752</concept_id>
+<concept_desc>Applied computing~Economics</concept_desc>
+<concept_significance>300</concept_significance></concept>
+</ccs2012>
+\end{CCSXML}
+\ccsdesc[500]{Computing methodologies~Machine learning}
+\ccsdesc[300]{Applied computing~Economics}
+
+\keywords{deep hedging, explainable AI, prototype models, implied volatility
+surface, Conditional Value-at-Risk, risk management}
+
+\maketitle
+
+%% =====================================================================
+\section{Introduction}
+%% Context -> problem -> research question -> contributions -> roadmap.
+
+Standard option hedging keys off the spot price and scalar Greeks. Yet the
+\emph{shape} of the implied-volatility (IV) surface---its skew, curvature and
+term structure, and how they shift across regimes---carries economically
+important tail-risk information that delta and delta--vega hedges ignore. The
+Deep Hedging framework~\cite{buehler2019deep} reformulates hedging as a
+data-driven sequential decision problem and learns policies robust to
+transaction costs and incomplete markets. However, its policy is a black-box
+neural network whose internal logic is opaque, a recognised barrier to adoption
+in finance where trust, auditability and regulatory compliance are
+critical~\cite{protohedge2025}. Opaque models may also learn spurious,
+non-causal correlations that fail in live conditions---a failure mode we
+observe directly: a flexible black-box hedger that is excellent in-sample
+\emph{blows up} on held-out market paths.
+
+We therefore ask:
+\begin{quote}
+\emph{Can an interpretable prototype-based volatility-surface hedger reduce tail
+hedge losses versus delta / delta--vega hedging while staying competitive with a
+black-box deep hedging policy?}
+\end{quote}
+
+Our answer, on both a controlled synthetic market and 14 years of real SPY
+options, is yes. We build on prototype-based interpretable
+hedging~\cite{protohedge2025}---which makes each decision a similarity-weighted
+blend of learned per-prototype actions---and extend it in three substantive
+directions: the state is the \emph{volatility-surface regime} rather than spot
+and a scalar Greek; the objective targets \emph{tail risk} (CVaR) rather than
+mean utility; and we validate on \emph{real, non-martingale} option data via an
+anchored-residual formulation.
+
+\noindent\textbf{Our main contributions are:}
+\begin{itemize}
+\item A cost-aware, episode-based hedging environment with a vectorised P\&L and
+an \emph{analytic} P\&L gradient (unit-tested against finite differences),
+enabling exact end-to-end optimisation without automatic differentiation
+(Section~\ref{sec:method}).
+\item An interpretable \textbf{prototype action head over IV-surface regimes}:
+each hedge is a similarity-weighted average of bounded per-prototype actions,
+with the top weights, prototype actions and final action exposed for every
+decision (Section~\ref{sec:method}).
+\item An \textbf{anchored residual} formulation that makes learned hedging robust
+on real, non-martingale data by running the policy as a bounded correction to
+the delta--vega hedge, so it can only make modest regime-conditional adjustments
+(Section~\ref{sec:method}).
+\item A rigorous comparison against unhedged, delta, delta--vega and a black-box
+deep hedger under a cost-adjusted CVaR objective on \emph{both} a controlled
+synthetic market and 14 years of real SPY options, with paired-bootstrap and
+Wilcoxon significance testing (Section~\ref{sec:results}).
+\item A full \textbf{interpretability and ablation suite}: a prototype catalogue
+mapped to historical regimes, an activation timeline over the test period, a
+single-trade audit, and ablations that quantify the value of the CVaR term, the
+surface features and the prototype count (Sections~\ref{sec:results}
+and~\ref{sec:interpretability}).
+\end{itemize}
+
+The remainder of the paper reviews background and related work
+(Section~\ref{sec:related}), details the method (Section~\ref{sec:method}) and
+data (Section~\ref{sec:data}), presents results (Section~\ref{sec:results}) and
+interpretability (Section~\ref{sec:interpretability}), and discusses limitations
+(Section~\ref{sec:limitations}), future work and conclusions
+(Section~\ref{sec:conclusion}). Code and reproducible artefacts are available in
+the project repository.
+
+%% =====================================================================
+\section{Background and Related Work}
+\label{sec:related}
+
+\paragraph{Deep hedging.} The Deep Hedging framework~\cite{buehler2019deep}
+formulates hedging as a sequential decision problem and optimises a policy
+network to maximise the expected utility of terminal P\&L under frictions.
+Extensions address continuous-time trading~\cite{murray2022deep}, transaction
+costs via no-trade bands~\cite{imaki2023notransaction}, and validation on
+empirical option data~\cite{mikkila2023empirical}. These methods are powerful
+but rely on opaque networks.
+
+\paragraph{Interpretable and prototype-based hedging.} Most directly,
+ProtoHedge~\cite{protohedge2025} replaces the black-box policy with an
+intrinsically interpretable one built from market \emph{prototypes}: the action
+is a similarity-weighted combination of learned per-prototype actions, in the
+spirit of case-based reasoning and prototype networks from computer
+vision~\cite{chen2019looks}. ProtoHedge demonstrates that interpretability costs
+little performance in Black--Scholes and stochastic-volatility settings. We adopt
+its prototype action head but change three things its scope leaves open: the
+\emph{state} (we key on the full IV surface, not spot/delta/time), the
+\emph{objective} (we target CVaR tail risk), and the \emph{data} (we validate on
+real SPY options through an anchored residual).
+
+\paragraph{Explainable AI.} Post-hoc explainers (LIME, SHAP) approximate a
+trained black box but can be unstable and manipulable; this has motivated a
+shift to intrinsically interpretable models that are transparent by
+design~\cite{protohedge2025,chen2019looks}. Our prototype head is intrinsically
+interpretable: the decision \emph{is} the explanation.
+
+\paragraph{Tail risk and CVaR.} We optimise Conditional Value-at-Risk in the
+smooth convex Rockafellar--Uryasev form~\cite{rockafellar2000optimization},
+which admits a jointly optimised auxiliary variable and analytic gradients.
+
+\paragraph{Volatility surfaces and no-arbitrage.} The IV surface is the central
+object of our state. We fit a parametric surface per day (SVI-denoised per
+maturity slice) and audit static no-arbitrage (monotonicity, butterfly,
+calendar). Recent work smooths surfaces while enforcing no-arbitrage with
+generative models~\cite{vuletic2024volgan,ivsgan2025}; we use a parsimonious
+parametric surface as a low-dimensional, auditable regime descriptor rather than
+a generative target.
+
+%% =====================================================================
+\section{Method}
+\label{sec:method}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{architecture.png}
+  \caption{The interpretable volatility-surface hedger. The standardised
+  surface-and-Greeks state is compared with learned prototypes; the hedge is the
+  softmax-similarity-weighted average of bounded per-prototype actions.}
+  \label{fig:arch}
+\end{figure}
+
+\paragraph{State.} Each rebalance day we build a standardised feature vector
+$z$: the four surface factors (level, skew, curvature, term slope), short/long
+ATM vol and term slope, realised vol, recent return, the one-day level change,
+and the liability/hedge-option Greeks (delta, gamma, vega), moneyness and time to
+maturity. The standardiser is \emph{fit on training data only} (no leakage).
+
+\paragraph{Prototype policy.} Prototypes $p_k$ are k-means medoids in the
+standardised space, fixed before action training. For state $z$, similarity
+weights are
+\begin{equation}
+w_k(z) = \frac{\exp(-\lVert z - p_k\rVert^2 / T)}
+              {\sum_{j} \exp(-\lVert z - p_j\rVert^2 / T)},
+\end{equation}
+and the hedge is $a(z) = \sum_k w_k(z)\, a_k$, where each $a_k$ is a
+$\tanh$-bounded action (underlying shares, hedge-option units) and $T$ is a
+learnable temperature. The top weights, prototype actions and final action are
+exposed for every decision (Figure~\ref{fig:arch}).
+
+\paragraph{Anchoring (real data).} On a non-martingale market a mean-seeking
+objective can \emph{speculate} on in-sample drift. We therefore run the learned
+policies as \textbf{bounded residuals on the delta--vega hedge},
+$\text{holdings} = \text{delta-vega}(\text{bank}) + a(z)$, so they remain genuine
+hedges and can only make modest regime-conditional corrections.
+
+\paragraph{Objective and training.} We maximise the cost-adjusted CVaR utility
+\begin{equation}
+\mathcal{U} = \mathbb{E}[\mathrm{P\&L}] - \lambda\, \mathrm{CVaR}_{\alpha}(\text{loss}),
+\end{equation}
+in the smooth Rockafellar--Uryasev form~\cite{rockafellar2000optimization} (the
+auxiliary $\eta$ optimised jointly), $L2$-regularised, via L-BFGS-B with
+\textbf{analytic gradients} (backprop through the policy and the vectorised
+episode P\&L; unit-tested against finite differences). Validation CVaR drives
+early stopping.
+
+\paragraph{Black-box baseline.} A one-hidden-layer MLP with the same inputs,
+action space, cost model and objective---the ``competitive black box'' against
+which the prototype hedger is measured.
+
+%% =====================================================================
+\section{Data}
+\label{sec:data}
+
+\paragraph{Synthetic.} A regime-switching stochastic-volatility-plus-jump market
+emits a parametric IV surface; it is zero-carry and jump-compensated (a
+martingale), so a policy can only improve the objective by genuinely hedging,
+never by harvesting drift. We train Monte-Carlo over many paths and test on
+disjoint held-out paths.
+
+\paragraph{Real.} OptionsDX SPY end-of-day chains, 2010--2023. Cleaning keeps a
+clean OTM smile (crossed/stale/expired filters, IV bounds, moneyness band,
+OTM-only); the funnel is reported in the repository. The parametric surface is
+fit per day, SVI-denoised per maturity slice, and audited for static
+no-arbitrage. This yields \textbf{3.5M cleaned OTM quotes across 3{,}499 trading
+days}, split chronologically (train $\approx$2010--2018, test
+$\approx$2020--2023), so the held-out window spans COVID-2020 and the 2022 bear
+market.
+
+%% =====================================================================
+\section{Results}
+\label{sec:results}
+
+\subsection{Synthetic market (held-out paths)}
+
+\begin{table}[t]
+\centering
+\caption{Synthetic test set. Lower $\mathrm{CVaR}$/worst/turnover is better;
+higher utility is better. Best in bold.}
+\label{tab:synthetic}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+policy & mean & $\mathrm{CVaR}_{95}$ & $\mathrm{CVaR}_{99}$ & worst & turn. & util. \\
+\midrule
+unhedged       & $-0.40$ & 13.21 & 18.19 & 23.49 & 0   & $-13.61$ \\
+delta          & $-0.15$ & 2.79  & 4.22  & 5.12  & 299 & $-2.93$ \\
+delta--vega    & $-0.22$ & 2.02  & 3.35  & 5.10  & 245 & $-2.24$ \\
+black-box MLP  & $+0.19$ & 1.73  & 2.74  & 4.05  & 270 & $-1.54$ \\
+\textbf{prototype (ours)} & $+0.03$ & \textbf{1.30} & \textbf{1.76} & \textbf{2.24} & \textbf{175} & \textbf{$-1.27$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:synthetic} shows the prototype hedger attains the lowest
+$\mathrm{CVaR}_{95/99}$, worst loss and turnover and the highest utility:
+$\mathrm{CVaR}_{95}=1.30$ versus delta $2.79$, delta--vega $2.02$ and the black
+box $1.73$. Paired bootstrap and Wilcoxon tests (Table~\ref{tab:significance})
+confirm the prototype's tail is significantly smaller than delta, delta--vega and
+the black box (CIs exclude 0, $p \approx 0$).
+Figures~\ref{fig:cvar_comp} and~\ref{fig:cvar_ci} visualise the tail comparison.
+
+\begin{table}[t]
+\centering
+\caption{Significance of $\mathrm{CVaR}_{95}$ differences (prototype minus
+baseline), paired bootstrap CI and Wilcoxon $p$.}
+\label{tab:significance}
+\small
+\begin{tabular}{lrrr}
+\toprule
+comparison & $\Delta\mathrm{CVaR}_{95}$ & 95\% CI & Wilcoxon $p$ \\
+\midrule
+vs.\ delta       & $-1.49$ & $[-1.74,\,-1.23]$ & $8\!\times\!10^{-6}$ \\
+vs.\ delta--vega & $-0.72$ & $[-0.94,\,-0.49]$ & $<10^{-6}$ \\
+vs.\ black box   & $-0.44$ & $[-0.62,\,-0.25]$ & $<10^{-6}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{cvar_comparison.png}
+  \caption{Tail loss ($\mathrm{CVaR}_{95}$) by policy on the synthetic held-out
+  set.}
+  \label{fig:cvar_comp}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{cvar_ci.png}
+  \caption{$\mathrm{CVaR}_{95}$ with paired-bootstrap confidence intervals.}
+  \label{fig:cvar_ci}
+\end{figure}
+
+\subsection{Real SPY options 2010--2023}
+
+\begin{table}[t]
+\centering
+\caption{Real SPY test window (chronological, $\approx$2020--2023; spans
+COVID-2020 and the 2022 bear market). Learned policies run as bounded residuals
+on the delta--vega hedge.}
+\label{tab:real}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+policy & mean & $\mathrm{CVaR}_{95}$ & $\mathrm{CVaR}_{99}$ & max-DD & turn. & util. \\
+\midrule
+delta          & 1.16 & 4.71  & 6.60  & 85.4  & 1{,}100 & $-3.55$ \\
+delta--vega    & 0.95 & 2.84  & 4.75  & 45.6  & 879     & $-1.90$ \\
+black-box MLP  & 3.65 & 30.23 & 37.86 & 604.8 & 5{,}054 & $-26.58$ \\
+\textbf{prototype (ours)} & 0.86 & \textbf{2.38} & \textbf{4.40} & \textbf{17.7} & 928 & \textbf{$-1.52$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On real data (Table~\ref{tab:real}) the interpretable prototype beats
+delta--vega on \emph{every} tail metric ($-16\%$ $\mathrm{CVaR}_{95}$, $-61\%$
+max-drawdown) and on cost-adjusted utility at comparable mean and turnover, while
+the black box overfits the in-sample drift and blows up out-of-sample
+($\mathrm{CVaR}_{95}=30.2$, turnover $5{,}054$, max-DD $604.8$). The
+cumulative-P\&L curve (Figure~\ref{fig:real_pnl}) shows the black box's
+path-dependent collapse versus the prototype's smooth, low-drawdown profile. The
+constrained, auditable policy generalises; the black box does not.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{real_cumulative_pnl.png}
+  \caption{Cumulative P\&L on the real SPY test window: the black box collapses
+  while the prototype stays smooth and low-drawdown.}
+  \label{fig:real_pnl}
+\end{figure}
+
+\subsection{Ablations}
+
+\begin{table}[t]
+\centering
+\caption{Ablations (synthetic). The CVaR term is essential: dropping it explodes
+the tail.}
+\label{tab:ablation}
+\small
+\begin{tabular}{lrrr}
+\toprule
+variant & $\mathrm{CVaR}_{95}$ & $\mathrm{CVaR}_{99}$ & mean \\
+\midrule
+$K=4$                 & 1.38 & 1.75 & $-0.11$ \\
+$K=8$ (default)       & \textbf{1.30} & 1.76 & $+0.03$ \\
+$K=16$                & 1.64 & 2.53 & $+0.14$ \\
+$K=32$                & 1.84 & 2.67 & $+0.24$ \\
+features = greeks-only  & 1.34 & 1.75 & $-0.13$ \\
+features = surface-only & 1.60 & 1.96 & $-0.12$ \\
+objective = mean-only   & \textbf{42.36} & 58.78 & $+1.15$ \\
+no transaction costs    & 1.43 & 1.97 & $+0.20$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:ablation} isolates each ingredient. The prototype count has a
+sweet spot at $K=8$ (too few underfits, too many overfits). The full feature set
+beats greeks-only and surface-only, quantifying the value of combining surface
+shape with Greeks. Critically, replacing the CVaR objective with a mean-only
+objective inflates $\mathrm{CVaR}_{95}$ from $1.30$ to $\mathbf{42.4}$
+(synthetic) and to $\mathbf{87.6}$ on real data---the risk objective is what
+buys the tail control.
+
+%% =====================================================================
+\section{Interpretability}
+\label{sec:interpretability}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{prototype_surfaces.png}
+  \caption{Each learned prototype reconstructs to a concrete IV surface.}
+  \label{fig:proto_surf}
+\end{figure}
+
+A primary benefit of the prototype head is auditability. Each prototype
+reconstructs to a concrete IV surface (Figure~\ref{fig:proto_surf}) and a
+readable hedge action. On real data the catalogue maps prototypes to historical
+regimes: a high-level, steep-skew prototype activates predominantly in stressed
+windows (high stress fraction), while low-level, gently sloped prototypes
+dominate calm periods. The activation timeline
+(Figure~\ref{fig:real_activation}) shows which regime drives the hedge through
+the test period, and a single-trade audit traces one stressed episode end to end
+(spot, holdings, prototype weights, cumulative P\&L). Every action is attributable
+to named market regimes.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{real_activation_timeline.png}
+  \caption{Prototype activation over the real SPY test period: which volatility
+  regime drives the hedge, when.}
+  \label{fig:real_activation}
+\end{figure}
+
+%% =====================================================================
+\section{Limitations}
+\label{sec:limitations}
+
+Real-data results are noisier and regime-dependent; over the long horizon the
+optimal anchored residual is conservative (it stays near delta--vega with a small
+systematic vega trim), so the edge is concentrated in the tail and drawdown
+rather than in dramatic regime-switching trades. The cleanest comparative finding
+is \emph{black-box overfitting versus prototype robustness}. The underlying hedge
+leg uses SPY (tradable); an SPX study would need a futures proxy for the delta
+leg. Costs are modelled as a proportional half-spread, with no market-impact or
+borrow modelling. Finally, the study uses European-style options and a daily
+rebalance; path-dependent payoffs would require a richer state.
+
+%% =====================================================================
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+A small, auditable set of volatility-surface prototypes delivers hedging that is
+competitive-to-better than delta--vega on tail risk and cost-adjusted utility,
+clearly more robust out-of-sample than a black-box deep hedger, and fully
+interpretable---every action traces to named market regimes. The CVaR objective
+and, on real data, residual anchoring are the two ingredients that make this
+work; transparency and tail-risk performance are not mutually exclusive.
+
+Future work proceeds along three axes. \emph{Empirical breadth:} extend to SPX
+with a futures delta proxy, to additional underlyings, and to path-dependent
+payoffs. \emph{Scalability:} study the prototype-count / dimensionality /
+compute trade-off and approximate nearest-neighbour prototype selection.
+\emph{Comparative evaluation:} benchmark against richer deep-hedging baselines
+under more realistic market dynamics, and engage practitioners to assess the
+prototype catalogue as a decision-support artefact.
+
+%% =====================================================================
+\begin{acks}
+Artefacts, figures and tables in this paper are produced by the open pipeline in
+the project repository and are reproducible end to end.
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

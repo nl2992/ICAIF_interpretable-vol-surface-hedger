@@ -94,8 +94,14 @@ def market_from_option_panel(
     min_quotes: int = 6,
     regime_window: int = 252,
     regime_mult: float = 1.15,
+    surface_method: str = "ols",
 ) -> MarketPath:
     """Build a :class:`MarketPath` by fitting the parametric surface to real data.
+
+    ``surface_method``:
+      * ``"ols"``  — fit the four surface factors directly to the raw quotes.
+      * ``"svi"``  — first denoise each maturity slice with an SVI fit, then fit
+        the factors to the smoothed surface (Phase 5). More robust to quote noise.
 
     The regime label (used only for evaluation slicing) is causal: a day is
     flagged ``stress`` when its fitted vol level exceeds ``regime_mult`` times the
@@ -111,6 +117,14 @@ def market_from_option_panel(
 
     ttm = _ttm_years(df)
     iv = _ensure_iv(df, ttm, rate, div)
+    if surface_method == "svi":
+        from ivsh.features.svi import smooth_panel_svi
+
+        df = df.assign(iv=iv, ttm_years=ttm)
+        df = smooth_panel_svi(df, rate=rate, div=div)
+        iv = df["iv"].to_numpy(dtype=float)
+    elif surface_method != "ols":
+        raise ValueError(f"unknown surface_method: {surface_method!r}")
     spot_col = df["spot"].to_numpy(dtype=float)
     fwd = spot_col * np.exp((rate - div) * ttm)
     k_all = np.log(df["strike"].to_numpy(dtype=float) / fwd)

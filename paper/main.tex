@@ -90,6 +90,20 @@ surface, Conditional Value-at-Risk, risk management}
 
 \maketitle
 
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{hero_graphical_abstract.png}
+  \caption{\textbf{The approach in one view.} \emph{(1)~State:} each day's market is
+  encoded as a volatility-surface regime. \emph{(2)~Decision:} the hedge is an
+  \emph{interpretable, bounded residual} on the classical delta--vega hedge, formed as
+  a similarity-weighted blend of a few learned, named prototype regimes---so every
+  trade is auditable. \emph{(3)~Outcome:} on held-out tests of two real markets the
+  prototype hedger's tail risk matches the strongest classical baseline (delta--vega),
+  whereas black-box and deep-RL hedgers (MLP, PPO, SAC) overfit and blow up by
+  $10$--$90\times$.}
+  \label{fig:teaser}
+\end{figure*}
+
 %% =====================================================================
 \section{Introduction}
 %% Context -> problem -> research question -> contributions -> roadmap.
@@ -115,14 +129,19 @@ hedge losses versus delta / delta--vega hedging while staying competitive with a
 black-box deep hedging policy?}
 \end{quote}
 
-Our answer, on both a controlled synthetic market and 14 years of real SPY
-options, is yes. We build on prototype-based interpretable
+Our answer, on a controlled synthetic market and on \emph{two} real option
+markets (SPY 2010--2023 and QQQ 2012--2023), is a qualified yes
+(Figure~\ref{fig:teaser}): the interpretable hedger \emph{matches} delta--vega on the
+tail across both markets while \emph{dominating} every learned black-box and deep-RL
+hedger, which overfit and blow up out-of-sample. We build on prototype-based interpretable
 hedging~\cite{protohedge2025}---which makes each decision a similarity-weighted
-blend of learned per-prototype actions---and extend it in three substantive
+blend of learned per-prototype actions---and extend it in four substantive
 directions: the state is the \emph{volatility-surface regime} rather than spot
 and a scalar Greek; the objective targets \emph{tail risk} (CVaR) rather than
-mean utility; and we validate on \emph{real, non-martingale} option data via an
-anchored-residual formulation.
+mean utility; we validate on \emph{real, non-martingale} option data via an
+anchored-residual formulation; and we show that making this robustness
+\emph{transfer across markets} requires a deliberate, validation-only
+model-selection recipe---naive selection overfits under regime shift.
 
 \noindent\textbf{Our main contributions are:}
 \begin{itemize}
@@ -147,6 +166,11 @@ significance testing (Section~\ref{sec:results}).
 \item A \textbf{volatility-scaled residual cap} that shrinks the learned residual
 when realised volatility spikes, repairing most of the prototype's crisis-fold
 (COVID-2020) walk-forward fragility (Sections~\ref{sec:method},~\ref{sec:results}).
+\item A \textbf{model-selection recipe for robustness under regime shift}: we show
+that a naive validation-selected residual \emph{adds} tail risk on a second market,
+diagnose the mechanism, and demonstrate that a tail-weighted objective---chosen by a
+pre-registered, validation-only search and confirmed once on each market's held-out
+test---restores cross-market parity with delta--vega (Section~\ref{sec:fix}).
 \item A full \textbf{interpretability and ablation suite}: a prototype catalogue
 mapped to historical regimes, an activation timeline over the test period, a
 single-trade audit, and ablations that quantify the value of the CVaR term, the
@@ -157,8 +181,9 @@ and~\ref{sec:interpretability}).
 The remainder of the paper reviews background and related work
 (Section~\ref{sec:related}), details the method (Section~\ref{sec:method}) and
 data (Section~\ref{sec:data}), presents results (Section~\ref{sec:results}) and
-interpretability (Section~\ref{sec:interpretability}), and discusses limitations
-(Section~\ref{sec:limitations}), future work and conclusions
+interpretability (Section~\ref{sec:interpretability}), discusses practical
+implications (Section~\ref{sec:discussion}) and limitations
+(Section~\ref{sec:limitations}), and concludes with future work
 (Section~\ref{sec:conclusion}). Code and reproducible artefacts are available in
 the project repository.
 
@@ -674,6 +699,42 @@ on real data.
   (d) cumulative P\&L versus delta--vega. The decision is fully traceable.}
   \label{fig:anatomy}
 \end{figure}
+
+%% =====================================================================
+\section{Discussion: practical implications}
+\label{sec:discussion}
+
+\paragraph{A deployable middle ground between classical and deep hedging.} For a
+risk desk, the operative finding is not a fractional CVaR improvement but a
+\emph{failure mode}: across two real markets, an unconstrained MLP and tuned deep-RL
+hedgers (PPO, SAC) earn high in-sample mean P\&L by taking directional/vol bets and
+then suffer out-of-sample tail losses an order of magnitude worse than a simple
+delta--vega hedge (Tables~\ref{tab:real},~\ref{tab:qqq}; Figure~\ref{fig:robustlandscape}).
+The interpretable prototype hedger never exhibits this behaviour: anchored as a
+bounded residual on delta--vega and trained with a tail-weighted objective, it
+\emph{matches} the strongest classical baseline on the tail in both markets while
+remaining the only learned policy that is stable across seeds. The practical value is
+therefore a hedger that can be deployed where a black box cannot---one that does no
+worse than the desk's existing delta--vega hedge but is fully auditable.
+
+\paragraph{Auditability and regulatory trust.} Every hedge decomposes into a
+similarity-weighted blend of a small set of named volatility-surface
+regimes (Figures~\ref{fig:proto_surf},~\ref{fig:regimemap},~\ref{fig:anatomy}): a
+reviewer can read \emph{which} regimes drove a trade and \emph{how} the residual
+modified the classical hedge. This directly addresses the trust, auditability and
+model-governance requirements that impede black-box deployment in regulated
+finance---and, unlike the synthetic-only evidence in prior interpretable-hedging
+work, it is demonstrated on fourteen years of real options spanning two crises.
+
+\paragraph{A cautionary lesson on model selection.} Our most transferable
+methodological finding is negative-turned-constructive: a residual tuned on a calm
+validation window \emph{added} tail risk on a second market (it hurt P\&L in
+$100\%$ of QQQ stress episodes), and naive validation-excess selection overfit so
+badly it discarded the surface entirely. Robustness only transferred once we
+(i) penalised the tail more aggressively and (ii) treated a \emph{second market} as
+the arbiter of generalisation. Practitioners building learned hedgers should expect
+in-sample/validation skill to overstate out-of-sample, regime-shifted performance,
+and should validate across instruments, not just across time.
 
 %% =====================================================================
 \section{Limitations}

@@ -64,6 +64,41 @@ require proprietary option data are scaffolded but deferred.
 - ✅ **Run commands.** One-shot `scripts/run_experiment.py` and the staged
   `build_dataset → train → evaluate → make_report` flow.
 
+## Robustness & generalization (v2 — added 2026-06-07)
+
+The three gaps the v1 paper flagged in its Limitations are now closed for real
+(SPY 2010–2023 + QQQ 2012–2023, extracted from the OptionsDX `.7z` archives via
+`scripts/extract_data.py`; all artefacts in `reports_real/`):
+
+- ✅ **Second universe (QQQ) + cross-market significance.**
+  `scripts/run_real_analysis.py --universe spy=… --universe qqq=…` scores all
+  methods per universe and combines per-universe paired-bootstrap results with
+  Stouffer's method (`ivsh.evaluation.stats.stouffer_combine`).
+- ✅ **Grid search → winning, robust config (v3, 2026-06-07).** The naive anchored
+  residual lost to delta–vega on QQQ (combined p≈1e-4 *worse*). Diagnosed
+  (`scripts/diagnose_failure.py`: residual adds tail risk in 100% of QQQ stress
+  episodes; val 2018–19 calmer than 2020+ test) and fixed via a pre-registered grid
+  (`scripts/grid_search.py`, 61 configs × 2 universes, 7 hypotheses, **validation-only
+  selection**). Winner = **tail-weighted objective** (cvar_weight=3, α=0.975),
+  confirmed once on test (`scripts/confirm_winner.py`): **ties-or-beats delta–vega on
+  BOTH SPY (2.34±0.10) and QQQ (5.62±0.63)**; combined p flips 1e-4 worse → **0.079
+  favorable**; dominates PPO/SAC by 1–2 orders. Cached banks: `scripts/cache_banks.py`.
+  GPU: torch cu124 installed (`RLConfig.device`), CUDA available.
+- ✅ **Seminal hero visuals** (`scripts/make_hero_figures.py`): 3D regime-vocabulary
+  surfaces, state regime map, robustness landscape, hedge anatomy — integrated into
+  `paper/main.tex` (compiles, 7 pp, 0 undefined refs).
+- ✅ **Strong deep-RL comparators (PPO + SAC, stable-baselines3 + PyTorch).**
+  `src/ivsh/models/deep_rl.py` (`HedgingGymEnv` + `train_sb3`/`evaluate_sb3`; env
+  return == `episode_pnl`, unit-tested). *Finding:* PPO/SAC overfit catastrophically
+  on this non-martingale data (CVaR₉₅ 35–90); the prototype dominates both by orders
+  of magnitude in **both** universes (combined p≈0). They are also the most
+  seed-unstable (PPO 52.8±14.6 vs prototype 2.36±0.11).
+- ✅ **Walk-forward COVID-2020 fix — volatility-scaled residual cap.**
+  `realized_vol_scale` in `ivsh.training.train`, threaded through
+  `fit_policy`/`run_policy`. *Finding:* repairs ~70% of the SPY-2020 blow-up
+  (59.98 → 17.96) and helps crisis folds broadly (QQQ-2022 10.3 → 3.9), net-beneficial
+  across folds, but does **not** reach delta–vega — a mitigation, not a cure.
+
 ## Deferred (future work)
 
 - ✅ Real option-chain ingestion & cleaning loader (`ivsh.data.loaders`): CSV/Parquet

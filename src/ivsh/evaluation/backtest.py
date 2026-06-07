@@ -42,11 +42,16 @@ def run_baseline(bank: EpisodeBank, name: str):
     }
 
 
-def run_policy(policy, bank: EpisodeBank, scaler: Standardizer, anchor: bool = False):
+def run_policy(policy, bank: EpisodeBank, scaler: Standardizer, anchor: bool = False,
+               residual_scale: np.ndarray | None = None):
     """Evaluate a learned policy. If ``anchor`` the policy output is a residual
-    added to the delta-vega Greek hedge."""
+    added to the delta-vega Greek hedge. ``residual_scale`` (``[E, L]``, optional)
+    caps the residual per decision point (e.g. the volatility-scaled cap), and
+    must match what was used at training time."""
     x = scaler.transform(bank.flat_features())
     holdings = policy.predict_holdings(x).reshape(bank.n_episodes, bank.horizon, -1)
+    if residual_scale is not None:
+        holdings = holdings * np.asarray(residual_scale)[:, :, None]
     if anchor:
         holdings = holdings + BASELINES["delta_vega"](bank)
     return {
@@ -54,6 +59,24 @@ def run_policy(policy, bank: EpisodeBank, scaler: Standardizer, anchor: bool = F
         "turnover": bank.turnover(holdings),
         "holdings": holdings,
     }
+
+
+def run_policy_ensemble(policies, bank: EpisodeBank, scaler: Standardizer,
+                        anchor: bool = False, residual_scale: np.ndarray | None = None):
+    """Average the (capped) residuals of several policies into one hedge.
+
+    Each policy contributes its standardised-state residual; we average them
+    (variance reduction across seeds), apply the optional residual cap, and add
+    the delta-vega base once. Returns the same dict contract as ``run_policy``.
+    """
+    x = scaler.transform(bank.flat_features())
+    res = np.mean([p.predict_holdings(x).reshape(bank.n_episodes, bank.horizon, -1)
+                   for p in policies], axis=0)
+    if residual_scale is not None:
+        res = res * np.asarray(residual_scale)[:, :, None]
+    holdings = res + BASELINES["delta_vega"](bank) if anchor else res
+    return {"pnl": bank.episode_pnl(holdings), "turnover": bank.turnover(holdings),
+            "holdings": holdings}
 
 
 def regime_metrics(pnl: np.ndarray, regime_start: np.ndarray) -> dict[str, dict]:

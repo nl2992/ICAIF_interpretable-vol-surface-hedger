@@ -293,7 +293,7 @@ def evaluate_and_report(cfg: ExperimentConfig, data: dict, models: dict) -> dict
         MarketConfig(n_days=cfg.n_days, seed=cfg.test_seeds[0])
     )
     audit = audit_market(audit_mkt)
-    (reports / "arbitrage_audit.md").write_text(audit.to_markdown())
+    (reports / "arbitrage_audit.md").write_text(audit.to_markdown(), encoding="utf-8")
     audit.per_day.to_csv(tables / "arbitrage_per_day.csv", index=False)
 
     # ---- checkpoint ----
@@ -329,7 +329,7 @@ def evaluate_and_report(cfg: ExperimentConfig, data: dict, models: dict) -> dict
         ),
         "config": _config_to_dict(cfg),
     }
-    (reports / "manifest.json").write_text(json.dumps(manifest, indent=2, default=str))
+    (reports / "manifest.json").write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
 
     # ---- markdown reports ----
     _write_final_report(reports, cfg, comp, metrics_by, regime_by, stats, manifest)
@@ -481,7 +481,7 @@ def _write_final_report(reports, cfg, comp, metrics_by, regime_by, stats, manife
         "[arbitrage_audit.md](arbitrage_audit.md) for the static no-arbitrage surface audit.",
         "",
     ]
-    (reports / "final_report.md").write_text("\n".join(lines))
+    (reports / "final_report.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def _headline(metrics_by, stats) -> str:
@@ -532,7 +532,7 @@ def _write_prototype_audit(reports, catalogue, share, entropy, top_protos, worst
         f"Dominant prototype along this path: {np.bincount(top_protos).argmax()}.",
         "",
     ]
-    (reports / "prototype_audit_report.md").write_text("\n".join(lines))
+    (reports / "prototype_audit_report.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def _write_ablation_report(reports, ablations) -> None:
@@ -556,4 +556,4 @@ def _write_ablation_report(reports, ablations) -> None:
         "value, all features, CVaR objective, with costs) reported in the final report.",
         "",
     ]
-    (reports / "ablation_report.md").write_text("\n".join(lines))
+    (reports / "ablation_report.md").write_text("\n".join(lines), encoding="utf-8")

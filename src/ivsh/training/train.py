@@ -44,17 +44,51 @@ class TrainConfig:
     action_scale: float = 2.5
     # black-box model
     hidden: int = 16
+    # "do-no-harm" shrink-to-base: penalise the magnitude of the applied residual
+    # (holdings - delta-vega base) so the policy defers to delta-vega unless a
+    # deviation genuinely helps. 0.0 reproduces the unconstrained policy.
+    residual_l2: float = 0.0
 
 
 def make_standardizer(train_bank: EpisodeBank) -> Standardizer:
     return Standardizer.fit(train_bank.flat_features())
 
 
-def _policy_pnl(policy, bank: EpisodeBank, scaler: Standardizer, smooth: bool, base=None):
+def realized_vol_scale(
+    bank: EpisodeBank, ref: float | None = None, floor: float = 0.25
+) -> tuple[np.ndarray, float]:
+    """Causal volatility-scaled residual cap multiplier, shape ``[E, L]``.
+
+    Shrinks the learned residual when trailing realised vol is high so that, in
+    stress regimes, the anchored policy collapses toward the pure delta-vega
+    hedge instead of speculating (the COVID-2020 walk-forward failure mode).
+
+    ``scale = clip(ref / max(realised_vol, ref), floor, 1.0)`` — uses the raw
+    ``realized_vol`` feature (already causal). ``ref`` defaults to the median
+    realised vol over ``bank`` (pass the *train* ref when scaling val/test so the
+    cap is consistent and leak-free).
+    """
+    idx = bank.feature_names.index("realized_vol")
+    rv = bank.features[:, :, idx]  # [E, L] raw (unstandardised) realised vol
+    if ref is None:
+        ref = float(np.median(rv))
+    ref = max(ref, 1e-6)
+    scale = np.clip(ref / np.maximum(rv, ref), floor, 1.0)
+    return scale, ref
+
+
+def _apply_residual(residual: np.ndarray, scale, base):
+    """Combine a raw residual ``[E, L, 2]`` with an optional ``[E, L]`` vol cap
+    and an optional delta-vega ``base`` into final holdings."""
+    if scale is not None:
+        residual = residual * np.asarray(scale)[:, :, None]
+    return residual + base if base is not None else residual
+
+
+def _policy_pnl(policy, bank: EpisodeBank, scaler: Standardizer, smooth: bool, base=None, scale=None):
     x = scaler.transform(bank.flat_features())
-    holdings = policy.predict_holdings(x).reshape(bank.n_episodes, bank.horizon, -1)
-    if base is not None:
-        holdings = holdings + base
+    residual = policy.predict_holdings(x).reshape(bank.n_episodes, bank.horizon, -1)
+    holdings = _apply_residual(residual, scale, base)
     pnl = bank.episode_pnl(holdings, smooth_costs=smooth)
     return pnl, holdings
 
@@ -70,22 +104,32 @@ def fit_policy(
     scaler: Standardizer,
     cfg: TrainConfig,
     val_bank: EpisodeBank | None = None,
+    residual_scale: np.ndarray | None = None,
+    val_residual_scale: np.ndarray | None = None,
 ):
-    """Fit a policy (analytic gradient + L-BFGS-B, optional val early stopping)."""
+    """Fit a policy (analytic gradient + L-BFGS-B, optional val early stopping).
+
+    ``residual_scale`` (``[E, L]``, optional) caps the learned residual per
+    decision point — e.g. the volatility-scaled cap from
+    :func:`realized_vol_scale`. ``None`` reproduces the unconstrained behaviour.
+    """
     n = policy.n_params
     x_tr = scaler.transform(train_bank.flat_features())
     E, L = train_bank.n_episodes, train_bank.horizon
     alpha, lam, l2 = cfg.cvar_alpha, cfg.cvar_weight, cfg.l2
+    rl2 = cfg.residual_l2
     theta0 = np.concatenate([policy.get_flat_params(), [0.0]])
 
     base_tr = delta_vega_hedge(train_bank) if cfg.anchor else None
     base_vl = delta_vega_hedge(val_bank) if (cfg.anchor and val_bank is not None and val_bank.n_episodes > 0) else None
+    sc_tr = None if residual_scale is None else np.asarray(residual_scale)[:, :, None]
 
     def obj_and_grad(z: np.ndarray):
         policy.set_flat_params(z[:n])
         eta = z[n]
         resid_flat, cache = policy.forward(x_tr)
-        holdings = resid_flat.reshape(E, L, -1)
+        residual = resid_flat.reshape(E, L, -1)
+        holdings = residual * sc_tr if sc_tr is not None else residual
         if base_tr is not None:
             holdings = holdings + base_tr
         pnl, dpnl_dh = train_bank.pnl_grad(holdings, smooth_costs=True)
@@ -96,8 +140,14 @@ def fit_policy(
         # gradients
         s = _sigmoid(_BETA * (loss - eta))  # softplus'
         c = (-1.0 / E) - (lam / ((1.0 - alpha) * E)) * s  # dJ/dpnl[e]
-        grad_h = (c[:, None, None] * dpnl_dh).reshape(E * L, -1)
-        grad_theta = policy.backward(grad_h, cache) + 2.0 * l2 * z[:n]
+        grad_h = c[:, None, None] * dpnl_dh
+        if rl2 > 0.0:  # shrink-to-base: penalise applied residual = holdings - base
+            applied = holdings - base_tr if base_tr is not None else holdings
+            J += rl2 * float((applied ** 2).sum()) / E
+            grad_h = grad_h + (2.0 * rl2 / E) * applied
+        if sc_tr is not None:  # chain rule: holdings = base + scale ⊙ residual
+            grad_h = grad_h * sc_tr
+        grad_theta = policy.backward(grad_h.reshape(E * L, -1), cache) + 2.0 * l2 * z[:n]
         grad_eta = lam * (1.0 - s.mean() / (1.0 - alpha))
         return float(J), np.concatenate([grad_theta, [grad_eta]])
 
@@ -108,7 +158,7 @@ def fit_policy(
         if not use_val:
             return
         policy.set_flat_params(z[:n])
-        pnl, _ = _policy_pnl(policy, val_bank, scaler, smooth=False, base=base_vl)
+        pnl, _ = _policy_pnl(policy, val_bank, scaler, smooth=False, base=base_vl, scale=val_residual_scale)
         val = cfg.cvar_weight * cvar_from_pnl(pnl, alpha) - pnl.mean()  # neg utility
         if val < best["val"]:
             best["val"] = val
@@ -124,7 +174,7 @@ def fit_policy(
     )
     z_final = best["z"] if (use_val and np.isfinite(best["val"])) else res.x
     policy.set_flat_params(z_final[:n])
-    pnl, _ = _policy_pnl(policy, train_bank, scaler, smooth=False, base=base_tr)
+    pnl, _ = _policy_pnl(policy, train_bank, scaler, smooth=False, base=base_tr, scale=residual_scale)
     return policy, {
         "success": bool(res.success),
         "n_iter": int(res.nit),
@@ -139,6 +189,8 @@ def fit_prototype(
     scaler: Standardizer,
     cfg: TrainConfig,
     val_bank: EpisodeBank | None = None,
+    residual_scale: np.ndarray | None = None,
+    val_residual_scale: np.ndarray | None = None,
 ) -> tuple[ProtoSurfaceHedger, KMeansResult, dict]:
     x = scaler.transform(train_bank.flat_features())
     km = kmeans(x, cfg.n_prototypes, seed=cfg.seed)
@@ -148,7 +200,10 @@ def fit_prototype(
         action_scale=cfg.action_scale,
         seed=cfg.seed,
     )
-    policy, history = fit_policy(policy, train_bank, scaler, cfg, val_bank=val_bank)
+    policy, history = fit_policy(
+        policy, train_bank, scaler, cfg, val_bank=val_bank,
+        residual_scale=residual_scale, val_residual_scale=val_residual_scale,
+    )
     return policy, km, history
 
 
@@ -157,6 +212,8 @@ def fit_blackbox(
     scaler: Standardizer,
     cfg: TrainConfig,
     val_bank: EpisodeBank | None = None,
+    residual_scale: np.ndarray | None = None,
+    val_residual_scale: np.ndarray | None = None,
 ) -> tuple[MLPHedger, dict]:
     policy = MLPHedger(
         n_features=train_bank.n_features,
@@ -165,5 +222,8 @@ def fit_blackbox(
         action_scale=cfg.action_scale,
         seed=cfg.seed,
     )
-    policy, history = fit_policy(policy, train_bank, scaler, cfg, val_bank=val_bank)
+    policy, history = fit_policy(
+        policy, train_bank, scaler, cfg, val_bank=val_bank,
+        residual_scale=residual_scale, val_residual_scale=val_residual_scale,
+    )
     return policy, history

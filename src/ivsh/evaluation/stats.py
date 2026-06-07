@@ -7,7 +7,7 @@ naturally paired, which sharpens the tests considerably.
 from __future__ import annotations
 
 import numpy as np
-from scipy.stats import wilcoxon
+from scipy.stats import norm, wilcoxon
 
 from ivsh.training.objective import cvar_from_pnl
 
@@ -48,6 +48,31 @@ def paired_bootstrap_diff(
     lo = float(np.quantile(diffs, (1 - ci) / 2))
     hi = float(np.quantile(diffs, 1 - (1 - ci) / 2))
     return {"diff": float(point), "ci_low": lo, "ci_high": hi, "p_two_sided": float(2 * min((diffs > 0).mean(), (diffs < 0).mean()))}
+
+
+def stouffer_combine(results: list[dict[str, float]]) -> dict[str, float]:
+    """Combine per-universe paired-bootstrap results into one cross-universe test.
+
+    Each element of ``results`` is the output of :func:`paired_bootstrap_diff`
+    (needs ``diff`` and ``p_two_sided``). We convert each two-sided p-value to a
+    signed z-score (sign from the direction of ``diff``; for ``stat="cvar"`` a
+    negative diff means A has the smaller tail) and combine with equal weights
+    (Stouffer's Z). This respects each market's own P&L scale rather than pooling
+    raw P&L across universes.
+    """
+    zs = []
+    for r in results:
+        p = min(max(r["p_two_sided"], 1e-12), 1.0)
+        sign = -1.0 if r["diff"] < 0 else 1.0  # negative diff (A better) -> negative z
+        zs.append(sign * norm.isf(p / 2.0))  # |z| from two-sided p
+    zs = np.asarray(zs, dtype=float)
+    z_comb = float(zs.sum() / np.sqrt(len(zs)))
+    return {
+        "z": z_comb,
+        "p_two_sided": float(2.0 * norm.sf(abs(z_comb))),
+        "mean_diff": float(np.mean([r["diff"] for r in results])),
+        "n_universes": len(results),
+    }
 
 
 def wilcoxon_pnl(pnl_a: np.ndarray, pnl_b: np.ndarray) -> dict[str, float]:

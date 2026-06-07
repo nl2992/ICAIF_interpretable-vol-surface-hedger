@@ -51,6 +51,19 @@ def select_features(bank: EpisodeBank, names: tuple[str, ...]) -> EpisodeBank:
     return new
 
 
+def stress_resample_index(bank: EpisodeBank, power: float = 1.0, seed: int = 7) -> np.ndarray:
+    """Indices (with replacement, size = n_episodes) oversampling stressed episodes.
+
+    Weight episode ``e`` by ``(1 + regime_frac_stress[e]) ** power`` so the tail
+    regime is better represented in training. ``power=0`` reproduces a uniform
+    resample. Use as ``subset(bank, stress_resample_index(bank, power))``.
+    """
+    w = (1.0 + bank.regime_frac_stress) ** power
+    w = w / w.sum()
+    rng = np.random.default_rng(seed)
+    return np.sort(rng.choice(bank.n_episodes, size=bank.n_episodes, replace=True, p=w))
+
+
 def subset(bank: EpisodeBank, idx: np.ndarray) -> EpisodeBank:
     """Return a new bank containing only the selected episodes."""
     return EpisodeBank(

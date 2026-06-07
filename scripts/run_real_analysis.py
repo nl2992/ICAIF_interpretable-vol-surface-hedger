@@ -64,11 +64,10 @@ from ivsh.training.train import (
 )
 from ivsh.utils.splits import chronological_split, subset
 
+from ivsh.viz import METHOD_COLORS as COLORS, apply_theme
+
+apply_theme()
 SEEDS = (7, 13, 23, 42, 2025)
-COLORS = {
-    "delta": "#4c72b0", "delta_vega": "#55a868", "blackbox": "#c44e52",
-    "prototype": "#8172b3", "prototype_capped": "#937860", "ppo": "#da8bc3", "sac": "#8c8c8c",
-}
 
 
 # --------------------------------------------------------------------------- #

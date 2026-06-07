@@ -43,13 +43,12 @@ from ivsh.training.objective import cvar_from_pnl
 from ivsh.training.train import TrainConfig, fit_prototype, make_standardizer, realized_vol_scale
 from ivsh.utils.splits import chronological_split, subset
 
+from ivsh.viz import METHOD_COLORS as COLORS, apply_theme
+
 ROOT = _pl.Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / "artifacts"
 FIGS = ROOT / "reports_real" / "figures"
-COLORS = {"delta": "#4c72b0", "delta_vega": "#55a868", "blackbox": "#c44e52",
-          "prototype": "#8172b3", "ppo": "#da8bc3", "sac": "#8c8c8c"}
-plt.rcParams.update({"font.size": 10, "axes.titlesize": 11, "figure.dpi": 140,
-                     "axes.grid": True, "grid.alpha": 0.25})
+apply_theme()
 
 
 def _load(uni):

@@ -20,18 +20,9 @@ import pandas as pd  # noqa: E402
 from ivsh.data.market import TAU0  # noqa: E402
 from ivsh.evaluation.metrics import compute_metrics  # noqa: E402
 from ivsh.training.objective import cvar_from_pnl  # noqa: E402
+from ivsh.viz import ACTION_COLORS, SEQ_CMAP, apply_theme, color as _color  # noqa: E402
 
-_METHOD_COLORS = {
-    "unhedged": "#999999",
-    "delta": "#4c72b0",
-    "delta_vega": "#55a868",
-    "blackbox": "#c44e52",
-    "prototype": "#8172b3",
-}
-
-
-def _color(name: str) -> str:
-    return _METHOD_COLORS.get(name, "#333333")
+apply_theme()  # one colour + style theme across all figures
 
 
 # --------------------------------------------------------------------------- #
@@ -129,7 +120,7 @@ def plot_prototype_heatmaps(proto, scaler, path: Path) -> None:
         if j >= k:
             ax.axis("off")
             continue
-        im = ax.imshow(grids[j], aspect="auto", origin="lower", cmap="viridis", vmin=vmin, vmax=vmax)
+        im = ax.imshow(grids[j], aspect="auto", origin="lower", cmap=SEQ_CMAP, vmin=vmin, vmax=vmax)
         ax.set_title(f"prototype {j}", fontsize=9)
         ax.set_xticks([0, 12, 24])
         ax.set_xticklabels(["0.8", "1.0", "1.2"], fontsize=7)
@@ -150,7 +141,7 @@ def plot_prototype_actions(proto, path: Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 4.0))
     w = 0.38
     ax.bar(x - w / 2, actions[:, 0], w, label="underlying shares", color="#4c72b0")
-    ax.bar(x + w / 2, actions[:, 1], w, label="hedge-option units", color="#dd8452")
+    ax.bar(x + w / 2, actions[:, 1], w, label="hedge-option units", color=ACTION_COLORS["option_units"])
     ax.axhline(0, color="k", lw=0.6)
     ax.set_xticks(x)
     ax.set_xticklabels([f"P{j}" for j in range(k)])
@@ -201,7 +192,7 @@ def plot_example_trade(proto, scaler, bank, episode: int, path: Path, anchor: bo
     axes[0].set_ylabel("spot")
     axes[0].set_title(f"Example trade audit — test episode {episode}")
     axes[1].plot(steps, holdings[:, 0], label="shares", color="#4c72b0")
-    axes[1].plot(steps, holdings[:, 1], label="option units", color="#dd8452")
+    axes[1].plot(steps, holdings[:, 1], label="option units", color=ACTION_COLORS["option_units"])
     axes[1].axhline(0, color="k", lw=0.5)
     axes[1].set_ylabel("holding")
     axes[1].legend(fontsize=8)

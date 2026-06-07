@@ -1,123 +1,197 @@
-# Roadmap & Status — Interpretable Volatility-Surface Hedger
+# TODO — Research Improvement Plans
 
-Status legend: ✅ implemented · 🟡 partial · ⬜ future work.
+## Current weaknesses
 
-The v1 release is a **self-contained synthetic-market study** that realises the
-full scientific core end-to-end (data → train → evaluate → report). Phases that
-require proprietary option data are scaffolded but deferred.
+- Incremental over ProtoHedge (2025) — reviewers will ask "what do you add beyond ProtoHedge on simulated data?"
+- No direct comparison to ProtoHedge's simulation setting — cannot say "we improve on ProtoHedge" without apples-to-apples numbers
+- Unclear that volatility SURFACE features (not just scalar Greeks) contribute independently — ablation exists but the narrative is not crisp
+- Prototype interpretation is underspecified — what market regime does each prototype actually represent, concretely?
+- SPY+QQQ are highly correlated (r > 0.9 daily returns) — cross-market robustness claim is limited; an uncorrelated universe would be stronger
+- Walk-forward may not cover the 2020 COVID vol spike and 2022 rate-shock vol adequately as out-of-sample stress tests
+- PPO/SAC catastrophic failure is compelling but reviewers will ask: does a tuned PPO with position limits also fail?
 
-## Core (implemented)
+---
 
-- ✅ **Market & data.** Regime-switching stochastic-vol + jump simulator with a
-  parametric IV surface, martingale (zero-carry, jump-compensated) so there is no
-  drift to speculate on. Monte-Carlo train paths, disjoint held-out test paths.
-  (`src/ivsh/data/market.py`)
-- ✅ **Pricing & Greeks.** Vectorised Black-Scholes price + delta/gamma/vega/
-  theta/vanna/volga, implied-vol solver. (`src/ivsh/pricing/black_scholes.py`)
-- ✅ **Hedging environment.** Episode-based, daily rebalancing, transaction costs
-  on traded notional, fully vectorised P&L **and analytic P&L gradient** (unit-
-  tested vs finite differences). No-trade P&L identity verified.
-  (`src/ivsh/envs/hedging_env.py`)
-- ✅ **Features.** Surface factors, term/skew/curvature, realised vol, book and
-  hedge-instrument Greeks; leak-free standardisation fit on train only.
-- ✅ **Quote cleaning (Phase 3).** `ivsh.data.clean.clean_option_panel`:
-  crossed/negative/zero, missing/expired, non-positive IV, abs/rel spread,
-  liquidity and stale filters with a per-rule removal summary; mid / ttm /
-  forward / log-moneyness features; parquet output to `data/interim/`.
-- ✅ **Greeks & parity (Phase 4).** `ivsh.features.greeks`: panel-level
-  delta..volga over the BS engine, plus put-call-parity residual diagnostics.
-- ✅ **Surface construction (Phase 5).** `ivsh.features.svi`: per-slice SVI
-  calibration (`fit_svi_slice`, `fit_svi_day`) and quote denoising
-  (`smooth_panel_svi`); `ivsh.data.build_surface`: fixed-grid IV tensor +
-  quality metrics (RMSE / max residual) + npz/zarr save. Loader exposes
-  `surface_method="svi"`.
-- ✅ **Real-data end-to-end (Phase 6 / Step 6).** OptionsDX adapter
-  (`optionsdx_to_panel`, `load_optionsdx`), real-data filters (OTM-only, IV
-  bounds, moneyness band), `build_data_from_panel` (chronological split),
-  `scripts/run_real_data.py`. Ran on SPY 2018–2020 → `reports_real/`.
-- ✅ **Anchored residual hedging.** Learned policies as bounded residuals on the
-  delta-vega hedge (`TrainConfig.anchor`) so they remain genuine hedges on
-  non-martingale real markets.
-- ✅ **Date-annotated prototypes (Step 8 / Phase 13).** `prototype_date_annotations`
-  maps each prototype to the historical dates/regime it activates on (e.g.
-  P6 ≈ Feb-2018 volmageddon).
-- ✅ **Baselines.** Unhedged, delta, delta-vega. (`src/ivsh/baselines/`)
-- ✅ **Black-box deep hedger.** numpy MLP, same inputs/actions/costs/objective.
-  (`src/ivsh/models/blackbox.py`)
-- ✅ **Prototype surface hedger.** k-means prototypes + learned bounded action per
-  prototype + similarity temperature; interpretable similarity-weighted action.
-  (`src/ivsh/models/prototype_policy.py`)
-- ✅ **Training.** Cost-adjusted CVaR utility (Rockafellar–Uryasev), analytic
-  gradients, L-BFGS-B, validation early stopping. (`src/ivsh/training/`)
-- ✅ **Evaluation.** Mean/median/std, VaR, CVaR₉₅/₉₉, worst, max drawdown,
-  turnover, utility; **paired bootstrap CIs + Wilcoxon**; regime-sliced metrics.
-  (`src/ivsh/evaluation/`)
-- ✅ **Interpretability.** Prototype catalogue, reconstructed prototype surfaces,
-  latent embedding, activation entropy, **example-trade audit**.
-- ✅ **Ablations (Phase 14).** Prototype count K sweep; surface-only vs
-  greeks-only vs full feature sets; **no-CVaR (mean-only) objective**; **no
-  transaction costs**; plus black-box-vs-prototype (head) and regime slicing in
-  the main comparison.
-- ✅ **Reproducibility.** `experiment_id / dataset_version / model_version / seed /
-  split_id` recorded in `reports/manifest.json`; chronological + held-out-path
-  splits; seeded throughout.
-- ✅ **Run commands.** One-shot `scripts/run_experiment.py` and the staged
-  `build_dataset → train → evaluate → make_report` flow.
+## Plans
 
-## Robustness & generalization (v2 — added 2026-06-07)
+### Plan A — Sharpen the surface-vs-Greeks ablation into the paper's primary differentiator
 
-The three gaps the v1 paper flagged in its Limitations are now closed for real
-(SPY 2010–2023 + QQQ 2012–2023, extracted from the OptionsDX `.7z` archives via
-`scripts/extract_data.py`; all artefacts in `reports_real/`):
+**What to code:**
+- `scripts/ablation_surface_contribution.py`: run three model variants already scaffolded:
+  1. Greeks-only features (delta, gamma, vega, theta, vanna, volga — no surface tensor)
+  2. Surface-only features (IV grid, skew, curvature, term-structure slope — no scalar Greeks)
+  3. Full features (surface + Greeks)
+- Report CVaR95, CVaR99, mean P&L, and utility for each variant on SPY and QQQ test sets with bootstrap CIs
+- Add a "surface marginal contribution" row: CVaR gap between (full) and (Greeks-only)
 
-- ✅ **Second universe (QQQ) + cross-market significance.**
-  `scripts/run_real_analysis.py --universe spy=… --universe qqq=…` scores all
-  methods per universe and combines per-universe paired-bootstrap results with
-  Stouffer's method (`ivsh.evaluation.stats.stouffer_combine`).
-- ✅ **Grid search → winning, robust config (v3, 2026-06-07).** The naive anchored
-  residual lost to delta–vega on QQQ (combined p≈1e-4 *worse*). Diagnosed
-  (`scripts/diagnose_failure.py`: residual adds tail risk in 100% of QQQ stress
-  episodes; val 2018–19 calmer than 2020+ test) and fixed via a pre-registered grid
-  (`scripts/grid_search.py`, 61 configs × 2 universes, 7 hypotheses, **validation-only
-  selection**). Winner = **tail-weighted objective** (cvar_weight=3, α=0.975),
-  confirmed once on test (`scripts/confirm_winner.py`): **ties-or-beats delta–vega on
-  BOTH SPY (2.34±0.10) and QQQ (5.62±0.63)**; combined p flips 1e-4 worse → **0.079
-  favorable**; dominates PPO/SAC by 1–2 orders. Cached banks: `scripts/cache_banks.py`.
-  GPU: torch cu124 installed (`RLConfig.device`), CUDA available.
-- ✅ **Seminal hero visuals** (`scripts/make_hero_figures.py`): 3D regime-vocabulary
-  surfaces, state regime map, robustness landscape, hedge anatomy — integrated into
-  `paper/main.tex` (compiles, 7 pp, 0 undefined refs).
-- ✅ **Strong deep-RL comparators (PPO + SAC, stable-baselines3 + PyTorch).**
-  `src/ivsh/models/deep_rl.py` (`HedgingGymEnv` + `train_sb3`/`evaluate_sb3`; env
-  return == `episode_pnl`, unit-tested). *Finding:* PPO/SAC overfit catastrophically
-  on this non-martingale data (CVaR₉₅ 35–90); the prototype dominates both by orders
-  of magnitude in **both** universes (combined p≈0). They are also the most
-  seed-unstable (PPO 52.8±14.6 vs prototype 2.36±0.11).
-- ✅ **Walk-forward COVID-2020 fix — volatility-scaled residual cap.**
-  `realized_vol_scale` in `ivsh.training.train`, threaded through
-  `fit_policy`/`run_policy`. *Finding:* repairs ~70% of the SPY-2020 blow-up
-  (59.98 → 17.96) and helps crisis folds broadly (QQQ-2022 10.3 → 3.9), net-beneficial
-  across folds, but does **not** reach delta–vega — a mitigation, not a cure.
+**What to run:**
+- `python scripts/run_real_analysis.py --feature_set greeks_only surface_only full --universe spy qqq`
+- Reuses existing `TrainConfig.feature_set` flag and cached episode banks
 
-## Deferred (future work)
+**Target result:**
+- Full features should beat Greeks-only by at least 10–15% on CVaR95 on SPY test set
+- If the gap is clear (p < 0.05 bootstrap), the abstract can state: "surface features reduce tail loss by X% vs scalar-Greeks-only policy"
 
-- ✅ Real option-chain ingestion & cleaning loader (`ivsh.data.loaders`): CSV/Parquet
-  reader, crossed/stale/expired/wide-spread filters, and a per-day parametric
-  surface fit that maps real quotes into the same `MarketPath`/`EpisodeBank`.
-- ✅ Static no-arbitrage diagnostics (`ivsh.features.arbitrage`): strike monotonicity,
-  butterfly/convexity (implied density >= 0), and calendar (total-variance)
-  checks; emitted as `reports/arbitrage_audit.md`.
-- ⬜ SVI / arbitrage-free surface fitting on observed quotes.
-- 🟡 Additional baselines (delta-gamma-vega with two options, static-regime,
-  historical-regression hedge).
-- ⬜ Temporal surface encoder over rolling windows; auxiliary surface-reconstruction loss.
-- ⬜ Intraday cadence; multi-option liability books.
-- ⬜ Further ablations (no-CVaR / mean-variance objective, no-cost, action-menu sweep).
+**Write into paper:**
+- Section 4.3 (ablations): promote surface ablation to a standalone subsection with Table 5 "Surface feature contribution"
+- Abstract and intro: replace "prototype-based" framing with "surface-regime-aware" as the primary differentiator
 
-## Acceptance criteria
+---
 
-- ✅ Dataset leak-free (held-out paths + train-only standardisation + purged splits).
-- ✅ Surface construction reproducible (seeded parametric model).
-- ✅ Baselines run · ✅ black-box runs · ✅ prototype hedger runs.
-- ✅ Backtest chronological / held-out · ✅ CVaR metrics · ✅ transaction costs.
-- ✅ Prototype audit trail · ✅ final report with comparison, ablation, example trade.
+### Plan B — Run ProtoHedge comparison on the simulated market to establish novelty delta
+
+**What to code:**
+- `scripts/run_protohedge_baseline.py`: implement the original ProtoHedge architecture (k-nearest-neighbor prototype lookup on scalar Greeks state, uniform action per prototype, no surface encoder) as a separate model class `ProtoHedgeBaseline`
+- Train and evaluate on the synthetic market paths already used in `reports/` (same splits, same costs)
+- Report side-by-side CVaR and utility vs this project's surface-aware prototype hedger
+
+**What to run:**
+- `python scripts/run_protohedge_baseline.py --config configs/synth_training.yaml --seeds 5`
+- Should complete in < 30 min using existing synthetic episode bank
+
+**Target result:**
+- Surface-aware prototype hedger should outperform ProtoHedge baseline on CVaR95 in at least 3 of 5 seeds
+- Even a modest improvement (e.g., CVaR95 2.4 vs 3.1 for ProtoHedge baseline) with p < 0.10 supports the novelty claim
+- If improvement is absent: reframe as "ProtoHedge with real surface data" contribution — the real-data application itself is novel
+
+**Write into paper:**
+- Section 4.1 (main comparison): add one column "ProtoHedge (no surface, simulated)" to Table 3
+- Related work (Section 2): add one paragraph explicitly comparing architecture and distinguishing contributions
+
+---
+
+### Plan C — Stress-test PPO with position limits and learning-rate tuning
+
+**What to code:**
+- `scripts/tune_ppo_robust.py`: train PPO/SAC with:
+  - Hard position limits matching the prototype hedger's action bounds
+  - 3 learning-rate values (1e-4, 3e-4, 1e-3) × 3 entropy coefficients
+  - Early stopping on validation CVaR (same protocol as prototype hedger)
+- Report best-tuned PPO CVaR alongside the default PPO result
+
+**What to run:**
+- `python scripts/tune_ppo_robust.py --n_configs 9 --seeds 3 --universe spy`
+- Expected runtime: 2–4h with existing SB3 + CUDA setup
+
+**Target result:**
+- If tuned PPO still catastrophically fails (CVaR95 > 10): strengthens the claim — "even with position limits and hyperparameter search, PPO/SAC degrades by X× vs prototype hedger"
+- If tuned PPO recovers somewhat: report honestly; the prototype hedger still wins on interpretability and cross-market stability
+
+**Write into paper:**
+- Section 4.1 footnote or appendix: "We verified that PPO with position limits and grid-searched hyperparameters does not recover competitive CVaR (best tuned PPO CVaR95 = X vs prototype Y)"
+- Preempts the most common reviewer objection about unfair PPO comparison
+
+---
+
+### Plan D — Annotate each prototype with a named regime and stress-event overlap
+
+**What to code:**
+- `scripts/prototype_regime_audit.py`: for each prototype k:
+  1. Retrieve all dates where prototype k has highest activation weight
+  2. Compute: mean surface shape (ATM vol, skew, curvature, term slope) for those dates
+  3. Cross-reference against known stress events (COVID March 2020, Aug 2015 flash crash, Feb 2018 Volmageddon, 2022 rate shock)
+  4. Assign a descriptive regime label: e.g., "P3: left-tail skew spike, elevated front-end vol, 2020-03"
+- Output: prototype catalogue table with regime names, surface characteristics, and % of stress-event days activated
+
+**What to run:**
+- `python scripts/prototype_regime_audit.py --checkpoints checkpoints/best_spy.pkl --dates data/processed/spy_dates.csv`
+- Extend existing `prototype_date_annotations` infrastructure
+
+**Target result:**
+- At minimum 3 of K prototypes map cleanly to named regimes with > 50% stress-day activation rate
+- One prototype should capture the COVID 2020 spike (high ATM vol, steep term-structure inversion)
+- Enables the claim: "prototypes correspond to interpretable regimes; P3 activates on 78% of 2020 crash days"
+
+**Write into paper:**
+- Section 5 (interpretability): replace generic prototype heatmaps with Table 6 "Prototype regime catalogue"
+- Add one example-trade narrative: "On 2020-03-16, P3 (COVID crash) dominates with weight 0.87; hedge action reduces delta exposure by X units"
+
+---
+
+### Plan E — Add a third universe (IWM or VIX-linked ETF) to strengthen cross-market claim
+
+**What to code:**
+- `scripts/extract_data.py --universe iwm`: extend existing OptionsDX adapter to pull IWM option chains (already scaffolded, different underlying ticker only)
+- Run full pipeline: clean → surface → train → evaluate on IWM 2018–2023
+- Report Stouffer-combined p-value across SPY + QQQ + IWM
+
+**What to run:**
+- `python scripts/extract_data.py --universe iwm --start 2018-01-01 --end 2023-12-31`
+- `python scripts/run_real_analysis.py --universe spy qqq iwm`
+- `python scripts/confirm_winner.py --universes spy qqq iwm`
+
+**Target result:**
+- If prototype hedger ties-or-beats delta-vega on IWM: combined Stouffer p < 0.01 across 3 universes
+- IWM (small-cap ETF) has meaningfully different vol surface dynamics from SPY/QQQ — a genuine robustness test
+- Removes the "SPY and QQQ are near-identical" objection
+
+**Write into paper:**
+- Section 4.2 (cross-market): add IWM column to Table 4; update Stouffer combination
+- Abstract: change "two equity index options markets" to "three equity options markets including small-cap"
+
+---
+
+### Plan F — Walk-forward fold analysis: isolate 2020 and 2022 as named stress folds
+
+**What to code:**
+- `scripts/walkforward_stress_audit.py`: extract per-fold CVaR95 for SPY and QQQ walk-forward results (already in `reports_real/`)
+- Annotate each fold with its dominant macro regime: calm (2018–19), COVID spike (2020), recovery (2021), rate shock (2022), normalisation (2023)
+- Plot: per-fold CVaR bar chart with stress-period annotation, all models side by side
+
+**What to run:**
+- `python scripts/walkforward_stress_audit.py --reports_dir reports_real/ --universe spy qqq`
+- Should be < 1h — parsing existing result artefacts only
+
+**Target result:**
+- A per-fold table showing that the prototype hedger's vol-scaled residual cap materially helps in 2020 (59.98 → 17.96 already known) and 2022 folds
+- Even if prototype does not fully match delta-vega in stress folds, the gap should be smaller than PPO/SAC
+- Framing: "the prototype hedger degrades gracefully in stress regimes; black-box PPO degrades catastrophically"
+
+**Write into paper:**
+- Section 4.4 (stress-period analysis): add Figure 7 "Walk-forward CVaR by regime fold"
+- Directly addresses the "does the model cover 2020 and 2022" reviewer concern with named evidence
+
+---
+
+### Plan G — Produce a hedge-anatomy figure for one COVID and one normal-market trade
+
+**What to code:**
+- `scripts/make_trade_anatomy.py`: for one high-stress date (2020-03-16) and one low-vol date (2019-06-01):
+  - Show the input surface as a 3D heatmap
+  - Show top-3 prototype activations with weights
+  - Show the resulting hedge action decomposed by prototype contribution
+  - Show the realised P&L for that day, with and without the hedge
+
+**What to run:**
+- `python scripts/make_trade_anatomy.py --dates 2020-03-16 2019-06-01 --universe spy`
+- Extend existing `make_hero_figures.py` infrastructure
+
+**Target result:**
+- Two side-by-side figures showing interpretability in action: stress day vs normal day
+- COVID day: high-vol prototype dominates (weight > 0.7), hedge correctly reduces delta; normal day: low-vol prototype dominates, smaller hedge adjustment
+- Makes the "interpretable" claim concrete and visually compelling for a reviewer
+
+**Write into paper:**
+- Section 5.2 (example trade audit): replace placeholder with Figure 9a/9b "Hedge anatomy: crisis vs calm"
+- Caption should name the prototype and its regime: "P3 (COVID crash prototype, weight=0.87) drives a large delta reduction on 2020-03-16"
+
+---
+
+### Plan H — Add delta-gamma-vega as an additional analytic baseline
+
+**What to code:**
+- `src/ivsh/baselines/delta_gamma_vega.py`: extend existing `src/ivsh/baselines/` with a delta-gamma-vega hedge that trades two options (near ATM + one OTM put for gamma) in addition to the underlying
+- Ensure same transaction-cost model and position limits as learned hedger
+
+**What to run:**
+- `python scripts/run_real_analysis.py --baselines unhedged delta delta_vega delta_gamma_vega prototype`
+- Compare CVaR95 and utility across all baselines
+
+**Target result:**
+- Delta-gamma-vega should improve on delta-vega for tail events (especially 2020 and 2022 folds)
+- If prototype hedger still beats or ties delta-gamma-vega: stronger claim — "the learned hedger matches a three-instrument analytic policy without requiring explicit gamma targeting"
+- If delta-gamma-vega wins: prototype hedger's contribution narrows to interpretability, which is still valid
+
+**Write into paper:**
+- Table 3 (main comparison): add delta-gamma-vega column
+- Section 4.1: one sentence noting whether the prototype hedger closes the gap to a richer analytic hedge

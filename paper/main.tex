@@ -125,10 +125,19 @@ a genuine stress event (Figure~\ref{fig:robustlandscape}).  It is \emph{not}
 present in the interpretable prototype hedger we introduce here
 ($\mathrm{CVaR}_{95} = 2.34 \pm 0.10$ on SPY, max drawdown $17.7$).
 
-Standard option hedging keys off the spot price and scalar Greeks.  Yet the
-\emph{shape} of the implied-volatility (IV) surface---its skew, curvature and
-term structure, and how they shift across regimes---carries tail-risk information
-that delta and delta--vega hedges ignore.  The Deep Hedging
+Standard option hedging relies on two \emph{Greeks}---sensitivities of the option
+price to market variables.  \emph{Delta} ($\delta$) measures how much the option
+price moves per \$1 change in the underlying; \emph{vega} ($\nu$) measures
+sensitivity to a 1-percentage-point change in \emph{implied volatility}---the
+market's current consensus forecast of future price variability, defined as the
+volatility parameter that, when inserted into the Black--Scholes pricing formula,
+exactly reproduces the observed market price of the option.  Delta--vega hedging
+eliminates first-order sensitivity to both the underlying and to the level of
+implied volatility.  Yet the full \emph{shape} of the implied-volatility (IV)
+surface---a two-dimensional map $\sigma(K,T)$ over option strike $K$ and
+maturity $T$---varies with regime in ways its scalar summaries miss: the skew
+steepens before crashes, the term structure inverts before earnings, and curvature
+signals tail-risk demand that neither $\delta$ nor $\nu$ alone can hedge.  The Deep Hedging
 framework~\cite{buehler2019deep} learns policies robust to transaction costs and
 incomplete markets, but its black-box policy is opaque, a recognised barrier to
 adoption in regulated finance~\cite{protohedge2025}, and---as we show---can
@@ -209,12 +218,16 @@ ProtoHedge~\cite{protohedge2025} replaces the black-box policy with an
 intrinsically interpretable one built from market \emph{prototypes}: the action
 is a similarity-weighted combination of learned per-prototype actions, in the
 spirit of case-based reasoning and prototype networks from computer
-vision~\cite{chen2019looks}. ProtoHedge demonstrates that interpretability costs
-little performance in Black--Scholes and stochastic-volatility settings. We adopt
-its prototype action head but change three things its scope leaves open: the
-\emph{state} (we key on the full IV surface, not spot/delta/time), the
-\emph{objective} (we target CVaR tail risk), and the \emph{data} (we validate on
-real SPY options through an anchored residual).
+vision~\cite{chen2019looks}. ProtoHedge demonstrates that interpretability costs little performance in
+Black--Scholes and stochastic-volatility settings---the key existence proof that
+such an architecture is feasible.  Three aspects its scope leaves open motivate our
+extension: (1)~\emph{state}: ProtoHedge keys on spot price, delta, and time-to-maturity;
+we key on the full IV surface $\sigma(K,T)$, whose shape encodes the market's
+\emph{probabilistic} view of future regimes rather than a point estimate; (2)~\emph{objective}: ProtoHedge maximises mean P\&L; we target $\mathrm{CVaR}_{95}$
+explicitly, which turns out to be essential (removing the CVaR term explodes tail
+risk from $2.4$ to $87.6$, Section~\ref{sec:results}); (3)~\emph{data}: ProtoHedge
+validates on synthetic paths; we validate on real, non-martingale SPY and QQQ data
+where in-sample drift is a trap---and diagnose exactly why a naive transfer fails.
 
 \paragraph{Explainable AI.} Post-hoc explainers (LIME, SHAP) approximate a
 trained black box but can be unstable and manipulable; this has motivated a
@@ -222,9 +235,18 @@ shift to intrinsically interpretable models that are transparent by
 design~\cite{protohedge2025,chen2019looks}. Our prototype head is intrinsically
 interpretable: the decision \emph{is} the explanation.
 
-\paragraph{Tail risk and CVaR.} We optimise Conditional Value-at-Risk in the
-smooth convex Rockafellar--Uryasev form~\cite{rockafellar2000optimization},
-which admits a jointly optimised auxiliary variable and analytic gradients.
+\paragraph{Tail risk and CVaR.} $\mathrm{CVaR}_\alpha$ is the expected hedging
+loss on the worst $(1{-}\alpha)$ fraction of days: given loss distribution $L$
+with $\alpha$-quantile $\eta$, $\mathrm{CVaR}_\alpha(L)=\mathbb{E}[L\mid L\ge\eta]$.
+It rewards avoiding catastrophic tail episodes far more than variance would.  The
+smooth Rockafellar--Uryasev form~\cite{rockafellar2000optimization},
+\begin{equation}
+  \mathrm{CVaR}_\alpha(L) \;=\; \min_{\eta}\!\left\{
+    \eta + \frac{1}{1-\alpha}\,\mathbb{E}[\max(L-\eta,\,0)]
+  \right\},
+\end{equation}
+jointly optimises the auxiliary threshold $\eta$ with the policy, giving exact
+analytic gradients (unit-tested against finite differences).
 
 \paragraph{Volatility surfaces and no-arbitrage.} The IV surface is the central
 object of our state. We fit a parametric surface per day (SVI-denoised per
@@ -253,16 +275,25 @@ ATM vol and term slope, realised vol, recent return, the one-day level change,
 and the liability/hedge-option Greeks (delta, gamma, vega), moneyness and time to
 maturity. The standardiser is \emph{fit on training data only} (no leakage).
 
-\paragraph{Prototype policy.} Prototypes $p_k$ are k-means medoids in the
-standardised space, fixed before action training. For state $z$, similarity
-weights are
+\paragraph{Prototype policy.} A \emph{prototype} is a representative example from
+the training distribution---a ``named regime'' such as \emph{calm}, \emph{elevated
+skew}, or \emph{stressed}---stored as a point $p_k$ in standardised feature space.
+Prototypes are k-means medoids, fixed before action training.  For a new market
+state $z$, the hedge is a \emph{similarity-weighted blend}:
 \begin{equation}
-w_k(z) = \frac{\exp(-\lVert z - p_k\rVert^2 / T)}
-              {\sum_{j} \exp(-\lVert z - p_j\rVert^2 / T)},
+  w_k(z) = \frac{\exp(-\lVert z - p_k\rVert^2 / T)}
+                {\textstyle\sum_{j}\exp(-\lVert z - p_j\rVert^2 / T)},
+  \qquad
+  a(z) = \sum_k w_k(z)\, a_k,
 \end{equation}
-and the hedge is $a(z) = \sum_k w_k(z)\, a_k$, where each $a_k$ is a
-$\tanh$-bounded action (underlying shares, hedge-option units) and $T$ is a
-learnable temperature. The top weights, prototype actions and final action are
+where $\lVert z-p_k\rVert^2$ is the squared Euclidean distance from the current
+state to prototype~$k$, $T$ is a learnable softmax temperature (smaller $T$
+concentrates weight on the nearest prototype; larger $T$ blends them),
+and each $a_k$ is a $\tanh$-bounded per-prototype action
+(underlying shares, hedge-option units).  Interpretability is structural: the
+decision is the weighted sum, the weights are visible, and each prototype maps to
+a recognisable historical regime, so every trade is a named analogy rather than an
+opaque activation.  The top weights, prototype actions and final action are
 exposed for every decision (Figure~\ref{fig:arch}).
 
 \paragraph{Anchoring (real data).} On a non-martingale market a mean-seeking

@@ -188,15 +188,6 @@ and mapping each prototype to historical regimes so every hedge is auditable
 (Sections~\ref{sec:results},~\ref{sec:interpretability}).
 \end{enumerate}
 
-The remainder of the paper reviews background and related work
-(Section~\ref{sec:related}), details the method (Section~\ref{sec:method}) and
-data (Section~\ref{sec:data}), presents results (Section~\ref{sec:results}) and
-interpretability (Section~\ref{sec:interpretability}), discusses practical
-implications (Section~\ref{sec:discussion}) and limitations
-(Section~\ref{sec:limitations}), and concludes with future work
-(Section~\ref{sec:conclusion}). Code and reproducible artefacts are available in
-the project repository.
-
 %% =====================================================================
 \section{Background and Related Work}
 \label{sec:related}
@@ -379,13 +370,10 @@ black-box MLP  & $+0.19$ & 1.73  & 2.74  & 4.05  & 270 & $-1.54$ \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:synthetic} shows the prototype hedger attains the lowest
-$\mathrm{CVaR}_{95/99}$, worst loss and turnover and the highest utility:
-$\mathrm{CVaR}_{95}=1.30$ versus delta $2.79$, delta--vega $2.02$ and the black
-box $1.73$. Paired bootstrap and Wilcoxon tests (Table~\ref{tab:significance})
-confirm the prototype's tail is significantly smaller than delta, delta--vega and
-the black box (CIs exclude 0, $p \approx 0$).
-Figures~\ref{fig:cvar_comp} and~\ref{fig:cvar_ci} visualise the tail comparison.
+The prototype hedger attains the lowest $\mathrm{CVaR}_{95/99}$, worst loss and
+turnover, and highest utility (Table~\ref{tab:synthetic}).  Paired bootstrap and
+Wilcoxon tests (Table~\ref{tab:significance}) confirm significance against all
+baselines (CIs exclude 0, $p \approx 0$).
 
 \begin{table}[t]
 \centering
@@ -403,21 +391,6 @@ vs.\ black box   & $-0.44$ & $[-0.62,\,-0.25]$ & $<10^{-6}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{cvar_comparison.png}
-  \caption{Tail loss ($\mathrm{CVaR}_{95}$) by policy on the synthetic held-out
-  set.}
-  \label{fig:cvar_comp}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{cvar_ci.png}
-  \caption{$\mathrm{CVaR}_{95}$ with paired-bootstrap confidence intervals.}
-  \label{fig:cvar_ci}
-\end{figure}
 
 \subsection{Real SPY options 2010--2023}
 
@@ -466,12 +439,10 @@ parity does not survive a second market.
 \subsection{Second universe (QQQ) and cross-market significance}
 \label{sec:qqq}
 
-To test whether the SPY findings generalise, we run the \emph{identical} pipeline on
-QQQ (Table~\ref{tab:qqq}). The story is sterner and we report it plainly:
-\textbf{delta--vega is the best tail hedge on QQQ}, the prototype's residual actually
-\emph{adds} tail risk relative to the delta--vega base it anchors on ($9.06$ vs
-$6.12$), and---unlike on SPY---the well-tuned MLP ($4.63$) is competitive. PPO and SAC
-remain catastrophic. Figure~\ref{fig:multiverse} compares the tail across both markets.
+To test whether the SPY findings generalise, we run the identical pipeline on
+QQQ (Table~\ref{tab:qqq}).  Delta--vega is the best tail hedge on QQQ; the
+prototype's residual adds tail risk ($9.06$ vs $6.12$) while PPO and SAC
+remain catastrophic.  Figure~\ref{fig:multiverse} compares both markets.
 
 \begin{table}[t]
 \centering
@@ -630,15 +601,6 @@ exceeds delta--vega ($4.12$). PPO, by contrast, is catastrophic in \emph{every} 
 of \emph{both} universes ($\mathrm{CVaR}_{95}$ $8$--$95$). The reproducible
 conclusion: the capped prototype is far more stable than any deep hedger, while
 delta--vega remains the more consistent classical baseline.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{walkforward_cvar.png}
-  \caption{Walk-forward $\mathrm{CVaR}_{95}$ by test year (real SPY). The deep
-  hedgers blow up (note PPO across all years and the MLP in 2020/2022); the
-  volatility-capped prototype repairs most of the prototype's 2020 failure.}
-  \label{fig:walkforward}
-\end{figure}
 
 \subsection{Ablations}
 

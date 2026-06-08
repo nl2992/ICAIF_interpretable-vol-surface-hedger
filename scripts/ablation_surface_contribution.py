@@ -73,42 +73,63 @@ def main() -> None:
     ap.add_argument("--universes", nargs="+", default=["spy", "qqq"])
     ap.add_argument("--feature-set", nargs="+", default=["greeks_only", "surface_only", "full"],
                     choices=sorted(FEATURE_SETS))
-    ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--seed", type=int, nargs="+", default=[7],
+                    help="one or more seeds; results are averaged and CIs are bootstrapped")
     ap.add_argument("--max-iter", type=int, default=250)
     ap.add_argument("--reports-dir", default="reports_real")
     args = ap.parse_args()
+    seeds = args.seed
 
     outdir = ROOT / args.reports_dir / "tables"
     outdir.mkdir(parents=True, exist_ok=True)
     rows = []
-    pnls: dict[tuple[str, str], np.ndarray] = {}
+    # pnls[u, fs] = list of per-seed pnl arrays (to be concatenated for bootstrap)
+    pnl_by_seed: dict[tuple[str, str], list[np.ndarray]] = {}
     for u in args.universes:
         if not (ARTIFACTS / f"bank_{u}.pkl").exists():
             print(f"[skip] missing cached bank: artifacts/bank_{u}.pkl")
             continue
         for fs in args.feature_set:
-            row, pnl = run_one(u, fs, args.seed, args.max_iter)
-            rows.append(row)
-            pnls[(u, fs)] = pnl
-            print(f"[{u} {fs}] CVaR95={row['cvar_95']:.3f} utility={row['utility']:.3f}")
+            pnl_list = []
+            for seed in seeds:
+                row, pnl = run_one(u, fs, seed, args.max_iter)
+                rows.append(row)
+                pnl_list.append(pnl)
+                print(f"[{u} {fs} seed={seed}] CVaR95={row['cvar_95']:.3f} utility={row['utility']:.3f}")
+            pnl_by_seed[(u, fs)] = pnl_list
 
     df = pd.DataFrame(rows)
     df.to_csv(outdir / "surface_contribution.csv", index=False)
 
+    # Per-seed summary — use the same cvar_from_pnl as compute_metrics
+    from ivsh.training.objective import cvar_from_pnl as _cvar
+    agg_rows = []
+    for (u, fs), pnl_list in pnl_by_seed.items():
+        cvars = [float(_cvar(pnl)) for pnl in pnl_list]
+        agg_rows.append({"universe": u, "feature_set": fs,
+                         "n_seeds": len(seeds),
+                         "cvar95_mean": float(np.mean(cvars)),
+                         "cvar95_std": float(np.std(cvars))})
+    pd.DataFrame(agg_rows).to_csv(outdir / "surface_contribution_multiseed.csv", index=False)
+
+    # Bootstrap CIs using all seeds pooled
     gaps = []
-    for u in sorted({u for u, _ in pnls}):
-        if (u, "full") in pnls and (u, "greeks_only") in pnls:
-            bs = paired_bootstrap_diff(pnls[(u, "full")], pnls[(u, "greeks_only")], stat="cvar")
+    for u in sorted({u for u, _ in pnl_by_seed}):
+        if (u, "full") in pnl_by_seed and (u, "greeks_only") in pnl_by_seed:
+            pnl_full = np.concatenate(pnl_by_seed[(u, "full")])
+            pnl_greeks = np.concatenate(pnl_by_seed[(u, "greeks_only")])
+            bs = paired_bootstrap_diff(pnl_full, pnl_greeks, stat="cvar")
             gaps.append({
                 "universe": u,
                 "comparison": "full_minus_greeks_only",
+                "n_seeds": len(seeds),
                 "dcvar95": bs["diff"],
                 "ci_low": bs["ci_low"],
                 "ci_high": bs["ci_high"],
                 "p_bootstrap": bs["p_two_sided"],
             })
     pd.DataFrame(gaps).to_csv(outdir / "surface_marginal_contribution.csv", index=False)
-    print(f"wrote {outdir / 'surface_contribution.csv'}")
+    print(f"wrote {outdir / 'surface_contribution.csv'} + multiseed summary + marginal contribution")
 
 
 if __name__ == "__main__":

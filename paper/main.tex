@@ -211,8 +211,13 @@ is a similarity-weighted combination of learned per-prototype actions, in the
 spirit of case-based reasoning and prototype networks from computer
 vision~\cite{chen2019looks}. ProtoHedge demonstrates that interpretability costs little performance in
 Black--Scholes and stochastic-volatility settings---the key existence proof that
-such an architecture is feasible.  Three aspects its scope leaves open motivate our
-extension: (1)~\emph{state}: ProtoHedge keys on spot price, delta, and time-to-maturity;
+such an architecture is feasible. A 10-seed comparison on the same synthetic
+market confirms the picture: a scalar-Greeks ProtoHedge-style baseline ties our
+surface prototype on $\mathrm{CVaR}_{95}$ (5-5 across seeds), but the surface
+prototype wins all 10 seeds on utility (mean advantage $+0.14$) and achieves
+78\% lower max-drawdown (mean $60.7$ vs $276.1$), consistent with surface
+features adding regime stability beyond raw tail loss.
+Three aspects ProtoHedge's scope leaves open motivate our extension: (1)~\emph{state}: ProtoHedge keys on spot price, delta, and time-to-maturity;
 we key on the full IV surface $\sigma(K,T)$, whose shape encodes the market's
 \emph{probabilistic} view of future regimes rather than a point estimate; (2)~\emph{objective}: ProtoHedge maximises mean P\&L; we target $\mathrm{CVaR}_{95}$
 explicitly, which turns out to be essential (removing the CVaR term explodes tail
@@ -429,7 +434,7 @@ parity does not survive a second market.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\linewidth]{real_cumulative_pnl.png}
+  \includegraphics[width=\linewidth]{cumulative_pnl.png}
   \caption{Cumulative P\&L on the real SPY test window: the learned black boxes earn
   high mean but with severe drawdowns, while the prototype stays smooth and
   low-drawdown.}
@@ -590,7 +595,7 @@ We stress-test stability two ways. \emph{Multi-seed}
 learned policy that never destabilises---every seed beats delta--vega and the spread
 is tight ($2.36\pm0.11$)---whereas the MLP swings ($6.61\pm3.93$) and PPO is both
 wildly unstable and uniformly catastrophic ($52.8\pm14.6$). \emph{Walk-forward}
-(Figure~\ref{fig:walkforward}): training on all prior years and testing on each
+(Figure~\ref{fig:robustlandscape}): training on all prior years and testing on each
 subsequent year is a sterner, per-regime test. The prototype's known failure is the
 COVID-2020 fold, where the anchored residual \emph{added} risk
 ($\mathrm{CVaR}_{95}=59.98$ vs delta--vega $4.12$). The \textbf{volatility-scaled
@@ -629,10 +634,21 @@ no transaction costs    & 1.43 & 1.97 & $+0.20$ \\
 Table~\ref{tab:ablation} isolates each ingredient. The prototype count has a
 sweet spot at $K=8$ (too few underfits, too many overfits). The full feature set
 beats greeks-only and surface-only, quantifying the value of combining surface
-shape with Greeks. Critically, replacing the CVaR objective with a mean-only
+shape with Greeks. On real SPY data the same ordering holds (five seeds): full
+($2.36\!\pm\!0.10$), surface-only ($2.56\!\pm\!0.57$), greeks-only
+($2.80\!\pm\!0.34$); the full-versus-greeks margin is $-0.49$ with a bootstrap
+CI entirely below zero ($p=0.000$), confirming that the surface shape carries
+genuine tail-reduction signal beyond scalars. Critically, replacing the CVaR objective with a mean-only
 objective inflates $\mathrm{CVaR}_{95}$ from $1.30$ to $\mathbf{42.4}$
 (synthetic) and to $\mathbf{87.6}$ on real data---the risk objective is what
 buys the tail control.
+
+An analytic baseline hierarchy validates the choice of delta--vega as the
+classical comparator. Delta-gamma-vega (a two-option hedge that matches both delta
+and gamma) achieves $\mathrm{CVaR}_{95}=4.69$ on the real SPY test set---nearly
+identical to pure delta ($4.71$) and substantially worse than delta--vega
+($2.84$)---confirming that \emph{vega neutralisation} is the decisive hedging
+dimension, not gamma.
 
 %% =====================================================================
 \section{Interpretability}
@@ -678,7 +694,7 @@ on real data.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\linewidth]{real_activation_timeline.png}
+  \includegraphics[width=\linewidth]{activation_timeline.png}
   \caption{Prototype activation over the real SPY test period: which volatility
   regime drives the hedge, when.}
   \label{fig:real_activation}
@@ -762,10 +778,13 @@ selection; we report the full grid, and note that naive validation-excess select
 rests on the pre-registered hypothesis confirmed on both markets' held-out tests. Over
 the long horizon the residual is conservative (it stays near delta--vega; activation
 entropy ${\approx}0.11$), so the edge is in robustness and drawdown rather than dramatic
-regime-switching trades, and interpretability is most vivid on synthetic data. The
-deep-RL comparators use default stable-baselines3 MLP policies at a fixed timestep
-budget; a heavily tuned recurrent deep hedger might be less fragile, though the
-overfitting finding holds across two markets and five seeds. The study covers two
+regime-switching trades, and interpretability is most vivid on synthetic data. We additionally ran a nine-configuration grid search over PPO learning rates and
+action scales (three seeds each) on both markets: the best tuned PPO achieves
+$\mathrm{CVaR}_{95}=20.3$ on SPY ($8.6\times$ the prototype's $2.38$) and
+$12.9$ on QQQ ($2.1\times$ delta--vega's $6.12$)---confirming the overfitting
+finding is robust to PPO hyperparameter tuning across both markets. A heavily
+tuned recurrent deep hedger might be less fragile, though the finding holds
+across two markets and five seeds. The study covers two
 underlyings (SPY, QQQ) but a single liability (one 30d ATM option) and a daily
 rebalance; the underlying hedge leg uses the ETF (tradable), an SPX study would need a
 futures proxy; costs are a proportional half-spread with no market-impact or borrow

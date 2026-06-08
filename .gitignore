@@ -12,6 +12,11 @@ results/*
 !results/.gitkeep
 notebooks/.ipynb_checkpoints/
 
+# Local vendor option-chain drops. Keep generated research summaries, not raw
+# proprietary archives or extracted chain files.
+data/*.7z
+data/raw/
+
 # Regenerable experiment artifacts (large/binary). The reports/ markdown,
 # figures and tables are committed as deliverables; checkpoints are not.
 artifacts/

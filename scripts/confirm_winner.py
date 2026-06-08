@@ -20,6 +20,7 @@ try:
 except Exception:
     pass
 
+import argparse
 import pickle
 import warnings
 
@@ -78,28 +79,43 @@ def confirm(uni, learned):
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--universes", nargs="+", default=["spy", "qqq"])
+    args = ap.parse_args()
+
     # learned-hedger test CVaRs from the earlier multi-universe run
-    comp = pd.read_csv(ROOT / "reports_real" / "tables" / "multiverse_comparison.csv")
-    learned = {(r.universe, r.method): r.cvar_95 for r in comp.itertuples()}
+    comp_path = ROOT / "reports_real" / "tables" / "multiverse_comparison.csv"
+    learned = {}
+    if comp_path.exists():
+        comp = pd.read_csv(comp_path)
+        learned = {(r.universe, r.method): r.cvar_95 for r in comp.itertuples()}
 
     rows, bss = [], []
-    for u in ["spy", "qqq"]:
+    for u in args.universes:
+        if not (ARTIFACTS / f"bank_{u}.pkl").exists():
+            print(f"[skip] missing artifacts/bank_{u}.pkl")
+            continue
         r, bs = confirm(u, learned)
         rows.append(r); bss.append(bs)
         print(f"[{u}] prototype(tail-weighted) CVaR95 = {r['proto_cvar_mean']:.3f}"
               f"±{r['proto_cvar_std']:.3f} | delta_vega {r['delta_vega_cvar']:.3f} | "
               f"dCVaR {r['dcvar_vs_dv']:+.3f} (p={r['p_boot_vs_dv']:.3f}) | "
               f"MLP {r['mlp_cvar']:.2f} PPO {r['ppo_cvar']:.2f} SAC {r['sac_cvar']:.2f}")
-    comb = stouffer_combine(bss)
-    print(f"\nStouffer-combined prototype - delta_vega across universes: "
-          f"mean_d={comb['mean_diff']:+.3f}, combined p={comb['p_two_sided']:.4f}")
+    if len(bss) > 1:
+        comb = stouffer_combine(bss)
+        print(f"\nStouffer-combined prototype - delta_vega across universes: "
+              f"mean_d={comb['mean_diff']:+.3f}, combined p={comb['p_two_sided']:.4f}")
     df = pd.DataFrame(rows)
     out = ROOT / "reports_real" / "tables" / "winner_confirmation.csv"
     df.to_csv(out, index=False)
     print(f"\nwrote {out}")
     # verdict
-    tie_or_beat = all(r["dcvar_vs_dv"] <= 0.05 * r["delta_vega_cvar"] + 1e-9 for r in rows)
-    dom_deeprl = all(r["proto_cvar_mean"] < min(r["ppo_cvar"], r["sac_cvar"]) for r in rows)
+    tie_or_beat = bool(rows) and all(r["dcvar_vs_dv"] <= 0.05 * r["delta_vega_cvar"] + 1e-9 for r in rows)
+    dom_deeprl = bool(rows) and all(
+        np.isfinite(r["ppo_cvar"]) and np.isfinite(r["sac_cvar"]) and
+        r["proto_cvar_mean"] < min(r["ppo_cvar"], r["sac_cvar"])
+        for r in rows
+    )
     print(f"\nBAR: tie-or-beat delta_vega on both universes: {tie_or_beat}")
     print(f"BAR: dominate PPO & SAC on both universes:     {dom_deeprl}")
 

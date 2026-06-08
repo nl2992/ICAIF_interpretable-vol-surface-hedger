@@ -1,0 +1,2 @@
+universe,config,hypo,action_scale,l2,K,cvar_weight,cvar_alpha,residual_l2,vol_floor,features,stress_power,ensemble,val_cvar,val_dv,val_excess,test_cvar,test_dv,test_excess,test_seed_std
+slv,C_as1.0_vf0.25_rl20.0_cw3.0,combo,1.0,0.001,8,3.0,0.95,0.0,0.25,full,0.0,False,-0.010450308449761253,0.006563300201661867,-0.01701360865142312,0.1670903862723229,0.15494845435326088,0.012141931919062016,0.009564035305496784

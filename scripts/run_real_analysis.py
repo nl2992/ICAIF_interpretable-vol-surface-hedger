@@ -50,7 +50,7 @@ warnings.filterwarnings("ignore")
 
 from ivsh.data.clean import clean_option_panel
 from ivsh.data.loaders import load_optionsdx, market_from_option_panel
-from ivsh.envs.hedging_env import EnvConfig, build_episode_bank
+from ivsh.envs.hedging_env import EnvConfig, build_episode_bank, concat_banks
 from ivsh.evaluation.backtest import run_baseline, run_policy
 from ivsh.evaluation.metrics import compute_metrics
 from ivsh.evaluation.stats import paired_bootstrap_diff, stouffer_combine, wilcoxon_pnl
@@ -82,10 +82,27 @@ def _build_bank(data_globs, surface):
         parts.append(c)
         print(f"    {pat}: {len(c):,} clean")
     clean = pd.concat(parts, ignore_index=True).sort_values("date").reset_index(drop=True)
-    market = market_from_option_panel(clean, surface_method=surface)
-    bank = build_episode_bank(market, EnvConfig())
-    dates = np.array(sorted(pd.unique(pd.to_datetime(clean["date"]))))
-    years = pd.to_datetime(dates[bank.start_days]).year.to_numpy()
+    unique_dates = pd.Series(sorted(pd.unique(pd.to_datetime(clean["date"]))))
+    segment_id = (unique_dates.diff().dt.days.fillna(0) > 10).cumsum()
+    date_to_segment = dict(zip(unique_dates, segment_id))
+    clean["_segment"] = pd.to_datetime(clean["date"]).map(date_to_segment)
+    banks, year_parts = [], []
+    for seg, panel in clean.groupby("_segment", sort=True):
+        panel = panel.drop(columns="_segment").reset_index(drop=True)
+        dates = np.array(sorted(pd.unique(pd.to_datetime(panel["date"]))))
+        if len(dates) <= EnvConfig().liab_tenor_days + 1:
+            continue
+        market = market_from_option_panel(panel, surface_method=surface)
+        seg_bank = build_episode_bank(market, EnvConfig())
+        banks.append(seg_bank)
+        year_parts.append(pd.to_datetime(dates[seg_bank.start_days]).year.to_numpy())
+        print(f"  segment {seg}: {pd.Timestamp(dates[0]).date()} to "
+              f"{pd.Timestamp(dates[-1]).date()}, "
+              f"{seg_bank.n_episodes} episodes")
+    if not banks:
+        raise ValueError("no contiguous date segment is long enough to build episodes")
+    bank = banks[0] if len(banks) == 1 else concat_banks(banks)
+    years = np.concatenate(year_parts)
     print(f"  bank: {bank.n_episodes} episodes, years {years.min()}-{years.max()}")
     return bank, years
 

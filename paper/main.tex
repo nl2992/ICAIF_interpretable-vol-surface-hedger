@@ -291,6 +291,13 @@ objective can \emph{speculate} on in-sample drift. We therefore run the learned
 policies as \textbf{bounded residuals on the delta--vega hedge},
 $\text{holdings} = \text{delta-vega}(\text{bank}) + a(z)$, so they remain genuine
 hedges and can only make modest regime-conditional corrections.
+By design, a perfectly regularised residual $a(z)\!\equiv\!0$ recovers delta--vega
+exactly; the \emph{theoretical ceiling} on CVaR improvement is therefore how
+much the residual can consistently reduce tail loss relative to its anchor.
+Delta--vega parity is consequently the \emph{expected outcome} of a
+well-constrained policy rather than a failure---and the salient comparison
+is with unconstrained black-box and deep-RL policies, which are not anchored
+and catastrophically overfit.
 
 \paragraph{Objective and training.} We maximise the cost-adjusted CVaR utility
 \begin{equation}

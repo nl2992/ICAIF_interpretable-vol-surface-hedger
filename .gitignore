@@ -31,3 +31,6 @@ checkpoints/
 *.synctex.gz
 *.fdb_latexmk
 *.fls
+
+# Raw + processed data (downloaded/regenerated, not committed — see README)
+data/

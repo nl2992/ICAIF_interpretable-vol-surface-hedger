@@ -226,6 +226,14 @@ See [`TODO.md`](TODO.md) for the full research roadmap and the status of each ph
 make install
 ```
 
+**Data (not committed — download once).** The real study uses end-of-day **SPY** and
+**QQQ** option chains from [OptionsDX](https://www.optionsdx.com/) (free historical
+EOD option-chain data). These raw files are large (~3.8 GB) and are deliberately
+**not** tracked in git; download the monthly archives and place them under
+`data/raw/spy/` and `data/raw/qqq/` — the pipeline ingests both the `.txt` and `.7z`
+monthly files. The **synthetic** study needs no external data. Full layout, source,
+and the cleaning funnel are documented in [`DATA.md`](DATA.md).
+
 **End-to-end pipeline.** Each step writes versioned artifacts consumed by the next:
 
 ```bash

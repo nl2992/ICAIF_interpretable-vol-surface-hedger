@@ -21,3 +21,13 @@ data/raw/
 # figures and tables are committed as deliverables; checkpoints are not.
 artifacts/
 checkpoints/
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.out
+*.log
+*.synctex.gz
+*.fdb_latexmk
+*.fls

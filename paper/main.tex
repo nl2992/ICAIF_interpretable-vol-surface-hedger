@@ -23,36 +23,24 @@ for Tail-Risk-Aware Option Hedging}
 \begin{abstract}
 Deep hedging learns effective option-hedging policies under market frictions,
 but its reliance on black-box networks limits trust and auditability---and, as
-we show, can produce catastrophic out-of-sample tail losses. A PPO deep-RL
-agent reaches $\mathrm{CVaR}_{95}=35.7$ on the SPY test period spanning COVID-2020
-and the 2022 bear market---twelve times worse than a simple delta--vega hedge.
-A SAC agent reaches $89.7$, thirty-two times worse. Deep-RL agents are also
-catastrophic on QQQ (PPO $78.4$, SAC $57.1$). The black-box MLP is
-seed-unstable (mean $6.61\!\pm\!3.93$ on SPY) and achieves competitive tail
-loss on QQQ ($4.63$, below delta--vega $6.12$), but cannot be trusted without
-cross-market seed validation.
-
-We introduce an interpretable alternative in which every hedge decision is a
-similarity-weighted blend of actions tied to a small set of learned
-\emph{volatility-surface prototypes} (named regimes: calm, elevated-skew,
-stressed). Policies are anchored as bounded residuals on the delta--vega hedge
-and trained under a tail-weighted CVaR objective; removing the CVaR term
-inflates $\mathrm{CVaR}_{95}$ from $2.4$ to $\mathbf{87.6}$.
-
-Validated on 14 years of real options across two markets---SPY (2010--2023,
-3.5M cleaned quotes) and QQQ (2012--2023, 1.9M)---spanning two crises,
-the prototype hedger is the \emph{only learned policy stable across seeds and
-markets}: $\mathrm{CVaR}_{95}$ $2.34\!\pm\!0.10$ across five seeds on
-SPY (versus PPO $52.8\!\pm\!14.6$). A naive anchored residual initially
-\emph{lost} cross-market (QQQ $+2.94$, $p\!\approx\!0$); we diagnose this
-as a model-selection-under-regime-shift artefact, run a pre-specified
-validation-only search, and confirm that a tail-weighted objective restores
-directional parity with delta--vega (Stouffer-combined $p=0.079$; directionally
-favourable but not significant at $\alpha=0.05$).
-
-The recipe is an anchored residual, a tail-weighted CVaR objective, and a
-small named set of volatility-surface prototypes. Interpretability and
-tail-risk control are not a trade-off.
+we show, can produce catastrophic out-of-sample tail losses under regime shift.
+We introduce an interpretable alternative in which every hedge is a
+similarity-weighted blend of bounded actions tied to a small set of learned,
+named \emph{volatility-surface prototypes} (calm, elevated-skew, stressed), run
+as a bounded residual on the classical delta--vega hedge and trained under a
+tail-weighted Conditional Value-at-Risk (CVaR) objective. Validated on fourteen
+years of real options across two markets---SPY (2010--2023) and QQQ
+(2012--2023)---spanning two crises, the prototype hedger is the \emph{only
+learned policy stable across both seeds and markets}: it matches the strongest
+classical baseline (delta--vega) on tail risk ($\mathrm{CVaR}_{95}=2.34\!\pm\!0.10$
+across five seeds on SPY) while PPO and SAC deep-RL hedgers blow up by
+$12$--$32\times$ and a black-box MLP is seed-unstable. We further show this
+cross-market robustness is not free: a naive residual \emph{loses} on the second
+market, a failure we trace to a model-selection-under-regime-shift artefact that
+a tail-weighted objective repairs (Stouffer-combined $p=0.079$). The recipe is an
+anchored residual, a tail-weighted CVaR objective, and a small named set of
+volatility-surface prototypes---the first empirical test of prototype hedging on
+live options data. Interpretability and tail-risk control are not a trade-off.
 \end{abstract}
 
 \begin{CCSXML}

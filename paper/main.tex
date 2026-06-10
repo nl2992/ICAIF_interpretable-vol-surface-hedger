@@ -118,7 +118,7 @@ catastrophically overfit out-of-sample under regime shift.
 We study whether an \emph{interpretable, prototype-based} hedger keyed on the
 IV-surface regime can eliminate that failure mode while remaining competitive
 with classical delta--vega hedging.  Each market state is compared against a
-small set of learned \emph{prototypes} (named volatility regimes. Calm, elevated
+small set of learned \emph{prototypes} (named volatility regimes, calm, elevated
 skew, stressed), and the hedge is a similarity-weighted blend of bounded
 per-prototype actions.  Every trade is traceable to a named regime, making the
 policy auditable under MiFID II, Basel model-risk frameworks, and the emerging
@@ -294,7 +294,7 @@ and catastrophically overfit.
 in the smooth Rockafellar--Uryasev form~\cite{rockafellar2000optimization} (the
 auxiliary $\eta$ optimised jointly), $L2$-regularised, via L-BFGS-B with
 \textbf{analytic gradients} (backprop through the policy and the vectorised
-episode P\&L. Unit-tested against finite differences). Validation CVaR drives
+episode P\&L, unit-tested against finite differences). Validation CVaR drives
 early stopping.
 
 \paragraph{Black-box baseline.} A one-hidden-layer MLP with the same inputs,
@@ -392,7 +392,7 @@ vs.\ black box   & $-0.44$ & $[-0.62,\,-0.25]$ & $<10^{-6}$ \\
 
 \begin{table}[t]
 \centering
-\caption{Real SPY test window (chronological, 2020--2023. Spans COVID-2020 and
+\caption{Real SPY test window (chronological, 2020--2023, spans COVID-2020 and
 the 2022 bear market). \textbf{The prototype hedger achieves
 $\mathrm{CVaR}_{95}=2.38$, matching delta--vega (2.84) while black-box and
 deep-RL hedgers blow up by $5$--$38\times$.} Learned policies run as bounded
@@ -475,7 +475,7 @@ prototype (ours) & 0.47 & 9.06  & 13.96 & 108.4   & $-8.59$ \\
 We combine the two markets' paired-bootstrap results with Stouffer's method
 (Table~\ref{tab:crosssig}). The naive anchored residual is \emph{significantly and
 substantially better than every learned black-box / deep-RL hedger} (PPO and SAC
-always. The MLP in combination), but \emph{significantly worse than classical
+always, the MLP in combination), but \emph{significantly worse than classical
 delta--vega} out-of-universe (combined $p\approx10^{-4}$). Rather than accept this,
 we diagnose the failure and fix it (Section~\ref{sec:fix}). The cross-market gap is
 not fundamental but a model-selection artefact.
@@ -517,8 +517,8 @@ is what makes the failure \emph{diagnosable}. The activation weights expose whic
 regime the model thought it was in versus which regime it actually faced.
 
 \paragraph{A pre-specified search with validation-only selection.} We test seven
-hypotheses (residual regularisation. A tail-weighted objective. Prototype count.
-A shrink-to-base ``do-no-harm'' penalty. Feature transfer. Seed ensembling. And
+hypotheses (residual regularisation, a tail-weighted objective, prototype count.
+A shrink-to-base ``do-no-harm'' penalty, feature transfer, seed ensembling, and
 stress reweighting) over a grid of $61$ configurations $\times$ two universes,
 selecting \emph{only} on the validation split and confirming once on test. The full
 grid is logged. Naive validation-excess selection \emph{overfits} (it discards the
@@ -527,7 +527,7 @@ right. The robust, generalising lever is a \textbf{tail-weighted objective} (a s
 CVaR weight and tail level $\alpha$), motivated directly by the diagnosis. Penalise the
 tail harder so the residual cannot speculate.
 
-\paragraph{Confirmed result.} Re-fitting this configuration (five seeds. Full
+\paragraph{Confirmed result.} Re-fitting this configuration (five seeds, full
 surface+greeks state) and confirming once on each market's held-out test split
 (Table~\ref{tab:winner}), the prototype now \textbf{ties-or-beats delta--vega on both
 universes}. The QQQ significant loss ($+2.94$) becomes a favourable tie ($-0.20$), and
@@ -723,7 +723,7 @@ risk desk, the operative finding is not a fractional CVaR improvement but a
 \emph{failure mode}. Across two real markets, an unconstrained MLP and tuned deep-RL
 hedgers (PPO, SAC) earn high in-sample mean P\&L by taking directional/vol bets and
 then suffer out-of-sample tail losses an order of magnitude worse than a simple
-delta--vega hedge (Tables~\ref{tab:real},~\ref{tab:qqq}. Figure~\ref{fig:robustlandscape}).
+delta--vega hedge (Tables~\ref{tab:real},~\ref{tab:qqq}, figure~\ref{fig:robustlandscape}).
 The interpretable prototype hedger never exhibits this behaviour. Anchored as a
 bounded residual on delta--vega and trained with a tail-weighted objective, it
 \emph{matches} the strongest classical baseline on the tail in both markets while

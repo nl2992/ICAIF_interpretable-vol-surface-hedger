@@ -77,6 +77,35 @@ def realized_vol_scale(
     return scale, ref
 
 
+def realized_vol_accel_scale(
+    bank: "EpisodeBank",
+    ref: float | None = None,
+    floor: float = 0.25,
+    accel_gamma: float = 3.0,
+) -> "tuple[np.ndarray, float]":
+    """Regime-conditional cap: tighten on vol *acceleration* not just level.
+
+    Combines the level cap (ref/max(rv,ref)) with an acceleration cap
+    (1/(1+gamma*d+rv/ref)) where d+rv = max(rv[t]-rv[t-1], 0).  Taking the
+    minimum means the cap activates EARLIER — during the rapid onset of a
+    stress event — rather than only once vol is already high.  This specifically
+    targets the COVID-2020 failure mode where a sharp vol-spike overwhelmed
+    the prototype before the level cap had a chance to act.
+
+    Pass the *train* ref at eval time to ensure leakage-free application.
+    """
+    idx = bank.feature_names.index("realized_vol")
+    rv = bank.features[:, :, idx]  # [E, L]
+    if ref is None:
+        ref = float(np.median(rv))
+    ref = max(ref, 1e-6)
+    level = np.clip(ref / np.maximum(rv, ref), floor, 1.0)
+    drv = np.zeros_like(rv)
+    drv[:, 1:] = np.maximum(rv[:, 1:] - rv[:, :-1], 0.0) / ref
+    accel = np.clip(1.0 / (1.0 + accel_gamma * drv), floor, 1.0)
+    return np.minimum(level, accel), ref
+
+
 def _apply_residual(residual: np.ndarray, scale, base):
     """Combine a raw residual ``[E, L, 2]`` with an optional ``[E, L]`` vol cap
     and an optional delta-vega ``base`` into final holdings."""

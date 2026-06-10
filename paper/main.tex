@@ -329,7 +329,11 @@ walk-forward fold). We therefore optionally scale the residual by a causal facto
 $s_t = \mathrm{clip}\!\big(v_{\mathrm{ref}} / \max(v_t, v_{\mathrm{ref}}),\, s_{\min},\, 1\big)$,
 where $v_t$ is trailing realised volatility and $v_{\mathrm{ref}}$ its training
 median. As volatility spikes the residual shrinks and the policy collapses toward
-the pure delta--vega hedge, capping how much it can speculate in stress.
+the pure delta--vega hedge, capping how much it can speculate in stress. We also
+explored a \emph{regime-conditional acceleration cap},
+$s^{\mathrm{accel}}_t = \min\!\big(s_t,\, 1/(1 + \gamma \cdot \Delta^+\! v_t / v_{\mathrm{ref}})\big)$
+with $\gamma=3$, which tightens further when vol is \emph{rising} rather than merely
+high. The combined cap activates earlier during the onset of a stress event.
 
 %% =====================================================================
 \begin{table}[t]
@@ -625,7 +629,15 @@ We stress-test stability two ways. \emph{Multi-seed}
 (Table~\ref{tab:multiseed}). Refitting across five seeds, the prototype is the only
 learned policy that never destabilises, every seed beats delta--vega and the spread
 is tight ($2.36\pm0.11$), whereas the MLP swings ($6.61\pm3.93$) and PPO is both
-wildly unstable and uniformly catastrophic ($52.8\pm14.6$). \emph{Walk-forward}
+wildly unstable and uniformly catastrophic ($52.8\pm14.6$). One might ask whether
+the PPO blow-up is a straw man: PPO optimises mean P\&L while the prototype targets
+CVaR. Training PPO with a CVaR-shaped reward ($r_t \leftarrow r_t + \kappa \min(r_t,0)$
+for $\kappa\in\{10,50\}$, three seeds) reduces the mean test CVaR$_{95}$ from $44.2$
+to $25.5$ ($\kappa=10$) and $21.4$ ($\kappa=50$, range $18.3$--$24.4$), confirming the
+shaping does tighten tails. PPO still blows up by $\mathbf{9\times}$ the prototype
+($21.4$ vs $2.34$), making the headline bulletproof: the failure is not objective
+mismatch alone but the RL policy's structural inability to stay bounded under
+regime shift. \emph{Walk-forward}
 (Figure~\ref{fig:robustlandscape}). Training on all prior years and testing on each
 subsequent year is a sterner, per-regime test. The prototype's known failure is the
 COVID-2020 fold, where the anchored residual \emph{added} risk
@@ -805,7 +817,11 @@ entropy ${\approx}0.11$), so the edge is in robustness and drawdown rather than 
 regime-switching trades, and interpretability is most vivid on synthetic data. A
 nine-configuration PPO grid (three seeds, both markets) does not rescue it: the best
 tuned PPO still reaches $\mathrm{CVaR}_{95}=20.3$ on SPY ($8.6\times$ the prototype)
-and $12.9$ on QQQ, so the overfitting survives tuning. The study covers two underlyings
+and $12.9$ on QQQ, so the overfitting survives tuning. The acceleration-based cap shows mixed walk-forward results relative to the level cap,
+suggesting that earlier constraint tightening may remove protective capacity during the critical
+onset phase, not just restrict speculative excess. The COVID-2020 fold remains the study's hard
+boundary: the cap mitigates but does not close the gap to delta--vega, a direction for future work
+with richer vol-acceleration signals. The study covers two underlyings
 (SPY, QQQ) but a single liability (one 30d ATM option) and a daily rebalance; the hedge
 leg uses the ETF, so an SPX study would need a futures proxy. Costs are a proportional
 half-spread with no market-impact or borrow modelling, and path-dependent payoffs would

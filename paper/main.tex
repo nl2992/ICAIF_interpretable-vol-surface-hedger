@@ -37,7 +37,8 @@ across five seeds on SPY) while PPO and SAC deep-RL hedgers blow up by
 $12$--$32\times$ and a black-box MLP is seed-unstable. We further show this
 cross-market robustness is not free. A naive residual \emph{loses} on the second
 market, a failure we trace to a model-selection-under-regime-shift artefact that
-a tail-weighted objective repairs (Stouffer-combined $p=0.079$). The recipe is an
+a tail-weighted objective repairs, restoring parity with delta--vega on both held-out
+markets (a tie confirmed on each market's test split). The recipe is an
 anchored residual, a tail-weighted CVaR objective, and a small named set of
 volatility-surface prototypes, the first empirical test of prototype hedging on
 live options data. Interpretability and tail-risk control are not a trade-off.
@@ -140,7 +141,7 @@ finding of this paper is therefore not a marginal CVaR improvement but a
 constrained, interpretable one does not. Interpretability and tail-risk control
 are not a trade-off.
 
-\noindent\textbf{Our main contributions are.}
+\noindent\textbf{We make the following contributions.}
 \begin{enumerate}
 \item An interpretable \textbf{prototype action head over IV-surface regimes}.
 Each hedge is a similarity-weighted blend of bounded per-prototype actions, with
@@ -168,7 +169,7 @@ and mapping each prototype to historical regimes so every hedge is auditable
 \section{Background and Related Work}
 \label{sec:related}
 
-\paragraph{Deep hedging.} The Deep Hedging framework~\cite{buehler2019deep}
+\paragraph{Deep hedging} The Deep Hedging framework~\cite{buehler2019deep}
 formulates hedging as a sequential decision problem and optimises a policy
 network to maximise the expected utility of terminal P\&L under frictions.
 Extensions address continuous-time trading~\cite{murray2022deep}, transaction
@@ -180,7 +181,7 @@ SAC~\cite{haarnoja2018sac}, via stable-baselines3~\cite{raffin2021sb3}, as stron
 deep-hedging comparators. These methods are powerful but rely on opaque networks,
 and, as we show, can overfit catastrophically on real, non-martingale data.
 
-\paragraph{Interpretable and prototype-based hedging.} Most directly,
+\paragraph{Interpretable and prototype-based hedging} Most directly,
 ProtoHedge~\cite{protohedge2025} replaces the black-box policy with an
 intrinsically interpretable one built from market \emph{prototypes}. The action
 is a similarity-weighted combination of learned per-prototype actions, in the
@@ -207,13 +208,13 @@ step''. We validate on real SPY and QQQ data spanning two crises and diagnose
 exactly why a naive transfer fails, the first empirical test of the prototype
 architecture on live options data.
 
-\paragraph{Explainable AI.} Post-hoc explainers (LIME, SHAP) approximate a
+\paragraph{Explainable AI} Post-hoc explainers (LIME, SHAP) approximate a
 trained black box but can be unstable and manipulable. This has motivated a
 shift to intrinsically interpretable models that are transparent by
 design~\cite{protohedge2025,chen2019looks}. Our prototype head is intrinsically
 interpretable. The decision \emph{is} the explanation.
 
-\paragraph{Tail risk and CVaR.} $\mathrm{CVaR}_\alpha$ is the expected hedging
+\paragraph{Tail risk and CVaR} $\mathrm{CVaR}_\alpha$ is the expected hedging
 loss on the worst $(1{-}\alpha)$ fraction of days. Given loss distribution $L$
 with $\alpha$-quantile $\eta$, $\mathrm{CVaR}_\alpha(L)=\mathbb{E}[L\mid L\ge\eta]$.
 It rewards avoiding catastrophic tail episodes far more than variance would.  The
@@ -226,7 +227,7 @@ smooth Rockafellar--Uryasev form~\cite{rockafellar2000optimization},
 jointly optimises the auxiliary threshold $\eta$ with the policy, giving exact
 analytic gradients (unit-tested against finite differences).
 
-\paragraph{Volatility surfaces and no-arbitrage.} The IV surface is the central
+\paragraph{Volatility surfaces and no-arbitrage} The IV surface is the central
 object of our state. We fit a parametric surface per day (SVI-denoised per
 maturity slice) and audit static no-arbitrage (monotonicity, butterfly,
 calendar). Recent work smooths surfaces while enforcing no-arbitrage with
@@ -247,13 +248,13 @@ a generative target.
   \label{fig:arch}
 \end{figure}
 
-\paragraph{State.} Each rebalance day we build a standardised feature vector
+\paragraph{State} Each rebalance day we build a standardised feature vector
 $z$. The four surface factors (level, skew, curvature, term slope), short/long
 ATM vol and term slope, realised vol, recent return, the one-day level change,
 and the liability/hedge-option Greeks (delta, gamma, vega), moneyness and time to
 maturity. The standardiser is \emph{fit on training data only} (no leakage).
 
-\paragraph{Prototype policy.} A \emph{prototype} is a representative example from
+\paragraph{Prototype policy} A \emph{prototype} is a representative example from
 the training distribution, a ``named regime'' such as \emph{calm}, \emph{elevated
 skew}, or \emph{stressed}, stored as a point $p_k$ in standardised feature space.
 Prototypes are k-means medoids, fixed before action training.  For a new market
@@ -274,7 +275,7 @@ a recognisable historical regime, so every trade is a named analogy rather than 
 opaque activation.  The top weights, prototype actions and final action are
 exposed for every decision (Figure~\ref{fig:arch}).
 
-\paragraph{Anchoring (real data).} On a non-martingale market a mean-seeking
+\paragraph{Anchoring (real data)} On a non-martingale market a mean-seeking
 objective can \emph{speculate} on in-sample drift. We therefore run the learned
 policies as \textbf{bounded residuals on the delta--vega hedge},
 $\text{holdings} = \text{delta-vega}(\text{bank}) + a(z)$, so they remain genuine
@@ -287,7 +288,7 @@ well-constrained policy rather than a failure, and the salient comparison
 is with unconstrained black-box and deep-RL policies, which are not anchored
 and catastrophically overfit.
 
-\paragraph{Objective and training.} We maximise the cost-adjusted CVaR utility
+\paragraph{Objective and training} We maximise the cost-adjusted CVaR utility
 \begin{equation}
 \mathcal{U} = \mathbb{E}[\mathrm{P\&L}] - \lambda\, \mathrm{CVaR}_{\alpha}(\text{loss}),
 \end{equation}
@@ -297,11 +298,11 @@ auxiliary $\eta$ optimised jointly), $L2$-regularised, via L-BFGS-B with
 episode P\&L, unit-tested against finite differences). Validation CVaR drives
 early stopping.
 
-\paragraph{Black-box baseline.} A one-hidden-layer MLP with the same inputs,
+\paragraph{Black-box baseline} A one-hidden-layer MLP with the same inputs,
 action space, cost model and objective, the ``competitive black box'' against
 which the prototype hedger is measured.
 
-\paragraph{Deep-RL comparators.} As stronger, model-free comparators we train
+\paragraph{Deep-RL comparators} As stronger, model-free comparators we train
 PPO~\cite{schulman2017ppo} and SAC~\cite{haarnoja2018sac}
 (stable-baselines3~\cite{raffin2021sb3}) in a Gymnasium environment that replays
 the same episodes. The state is the identical standardised feature vector, the
@@ -310,7 +311,7 @@ reward is the increment of the episode P\&L so that an episode's return equals t
 hedging P\&L every other policy is scored on. They optimise \emph{expected} return
 (mean P\&L), the standard deep-hedging-as-RL objective.
 
-\paragraph{Volatility-scaled residual cap.} On a sharp regime shift the anchored
+\paragraph{Volatility-scaled residual cap} On a sharp regime shift the anchored
 residual can itself \emph{add} tail risk (we observe this in the COVID-2020
 walk-forward fold). We therefore optionally scale the residual by a causal factor
 $s_t = \mathrm{clip}\!\big(v_{\mathrm{ref}} / \max(v_t, v_{\mathrm{ref}}),\, s_{\min},\, 1\big)$,
@@ -322,13 +323,13 @@ the pure delta--vega hedge, capping how much it can speculate in stress.
 \section{Data}
 \label{sec:data}
 
-\paragraph{Synthetic.} A regime-switching stochastic-volatility-plus-jump market
+\paragraph{Synthetic} A regime-switching stochastic-volatility-plus-jump market
 emits a parametric IV surface. It is zero-carry and jump-compensated (a
 martingale), so a policy can only improve the objective by genuinely hedging,
 never by harvesting drift. We train Monte-Carlo over many paths and test on
 disjoint held-out paths.
 
-\paragraph{Real.} OptionsDX end-of-day chains for \emph{two} underlyings. SPY
+\paragraph{Real} OptionsDX end-of-day chains for \emph{two} underlyings. SPY
 (2010--2023) and QQQ (2012--2023). Cleaning keeps a clean OTM smile
 (crossed/stale/expired filters, IV bounds, moneyness band, OTM-only). The funnel is
 reported in the repository. The parametric surface is fit per day, SVI-denoised per
@@ -503,7 +504,7 @@ vs.\ SAC         & $-87.4$ ($\approx0$)  & $-48.1$ ($\approx0$) & $\approx0$ (be
 \subsection{Diagnosing the cross-market failure and recovering parity}
 \label{sec:fix}
 
-\paragraph{Diagnosis. A model-selection-under-regime-shift artefact.}
+\paragraph{Diagnosis. A model-selection-under-regime-shift artefact}
 Why does the anchored residual improve SPY but hurt QQQ? We decompose the residual
 on the test set. On QQQ the residual magnitude is an order of magnitude larger than
 on SPY (mean $|{\rm residual}|$ $0.22$ vs $0.03$) and, decisively, in
@@ -516,7 +517,7 @@ single, non-representative window. The transparent structure of the prototype he
 is what makes the failure \emph{diagnosable}. The activation weights expose which
 regime the model thought it was in versus which regime it actually faced.
 
-\paragraph{A pre-specified search with validation-only selection.} We test seven
+\paragraph{A pre-specified search with validation-only selection} We test seven
 hypotheses (residual regularisation, a tail-weighted objective, prototype count.
 A shrink-to-base ``do-no-harm'' penalty, feature transfer, seed ensembling, and
 stress reweighting) over a grid of $61$ configurations $\times$ two universes,
@@ -527,7 +528,7 @@ right. The robust, generalising lever is a \textbf{tail-weighted objective} (a s
 CVaR weight and tail level $\alpha$), motivated directly by the diagnosis. Penalise the
 tail harder so the residual cannot speculate.
 
-\paragraph{Confirmed result.} Re-fitting this configuration (five seeds, full
+\paragraph{Confirmed result} Re-fitting this configuration (five seeds, full
 surface+greeks state) and confirming once on each market's held-out test split
 (Table~\ref{tab:winner}), the prototype now \textbf{ties-or-beats delta--vega on both
 universes}. The QQQ significant loss ($+2.94$) becomes a favourable tie ($-0.20$), and
@@ -718,7 +719,7 @@ on real data.
 \section{Practical Implications}
 \label{sec:discussion}
 
-\paragraph{A deployable middle ground between classical and deep hedging.} For a
+\paragraph{A deployable middle ground between classical and deep hedging} For a
 risk desk, the operative finding is not a fractional CVaR improvement but a
 \emph{failure mode}. Across two real markets, an unconstrained MLP and tuned deep-RL
 hedgers (PPO, SAC) earn high in-sample mean P\&L by taking directional/vol bets and
@@ -731,7 +732,7 @@ remaining the only learned policy that is stable across seeds. The practical val
 therefore a hedger that can be deployed where a black box cannot, one that does no
 worse than the desk's existing delta--vega hedge but is fully auditable.
 
-\paragraph{Auditability and regulatory trust.} Every hedge decomposes into a
+\paragraph{Auditability and regulatory trust} Every hedge decomposes into a
 similarity-weighted blend of a small set of named volatility-surface
 regimes (Figures~\ref{fig:proto_surf},~\ref{fig:regimemap},~\ref{fig:anatomy}). A
 reviewer can read \emph{which} regimes drove a trade and \emph{how} the residual
@@ -740,7 +741,7 @@ model-governance requirements that impede black-box deployment in regulated
 finance, and, unlike the synthetic-only evidence in prior interpretable-hedging
 work, it is demonstrated on fourteen years of real options spanning two crises.
 
-\paragraph{A cautionary lesson on model selection.} Our most transferable
+\paragraph{A cautionary lesson on model selection} Our most transferable
 methodological finding is negative-turned-constructive. A residual tuned on a calm
 validation window \emph{added} tail risk on a second market (it hurt P\&L in
 $100\%$ of QQQ stress episodes), and naive validation-excess selection overfit so
@@ -750,7 +751,7 @@ the arbiter of generalisation. Practitioners building learned hedgers should exp
 in-sample/validation skill to overstate out-of-sample, regime-shifted performance,
 and should validate across instruments, not just across time.
 
-\paragraph{Four lessons for risk desks.}
+\paragraph{Four lessons for risk desks}
 \textbf{(1) Validate on a second instrument before deploying.} SPY-only results looked
 adequate, and QQQ exposed over-trading in stress.
 \textbf{(2) Anchor any learned residual to the classical hedge.} The worst case is then a

@@ -88,9 +88,11 @@ def main() -> None:
     vals = {u: [conf.loc[u, "delta_vega_cvar"], conf.loc[u, "proto_cvar_mean"],
                 L[(u, "blackbox")], L[(u, "ppo")], L[(u, "sac")]] for u in ["spy", "qqq"]}
 
-    fig = plt.figure(figsize=(15.5, 5.4))
-    gs = fig.add_gridspec(1, 3, width_ratios=[1.05, 1.0, 1.35], wspace=0.28,
-                          left=0.02, right=0.985, top=0.82, bottom=0.12)
+    NAVY = METHOD_COLORS["prototype"]
+    INK = "#0A1F44"
+    fig = plt.figure(figsize=(13.0, 4.9))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.05, 1.0, 1.35], wspace=0.20,
+                          left=0.035, right=0.99, top=0.84, bottom=0.20)
 
     # ---- Panel 1: STATE (3D surface) ----
     ax1 = fig.add_subplot(gs[0, 0], projection="3d")
@@ -108,17 +110,11 @@ def main() -> None:
     # ---- Panel 2: DECISION (interpretable, bounded) ----
     ax2 = fig.add_subplot(gs[0, 1])
     order = np.argsort(w)[::-1]
-    bars = ax2.bar(range(len(w)), w[order], color="#8172b3", edgecolor="k", linewidth=0.5)
+    bars = ax2.bar(range(len(w)), w[order], color=NAVY, edgecolor="k", linewidth=0.5)
     ax2.set_xticks(range(len(w)))
     ax2.set_xticklabels([f"P{j}" for j in order], fontsize=8)
     ax2.set_ylabel("activation weight $w_k$", fontsize=9)
     ax2.set_title("(2) DECISION\ninterpretable & bounded", fontsize=11)
-    ax2.text(0.5, -0.28, r"$\mathrm{hedge} = \Delta\nu\mathrm{\ hedge} + \sum_k w_k\, a_k$",
-             transform=ax2.transAxes, ha="center", va="top", fontsize=12)
-    ax2.text(0.5, -0.42, "anchor (classical)        +    bounded, vol-capped residual",
-             transform=ax2.transAxes, ha="center", va="top", fontsize=8, color="#555")
-    ax2.text(0.5, -0.56, "every trade traces to a few named regimes",
-             transform=ax2.transAxes, ha="center", va="top", fontsize=8.5, style="italic", color="#444")
 
     # ---- Panel 3: OUTCOME (robust across markets) ----
     ax3 = fig.add_subplot(gs[0, 2])
@@ -136,20 +132,27 @@ def main() -> None:
     # shade the "safe" band up to delta-vega level
     ax3.axhspan(1.0, max(vals["spy"][0], vals["qqq"][0]) * 1.05, color="#55a868", alpha=0.07)
     ax3.annotate("deep hedgers\nblow up (10-90x)", xy=(1 + bw, vals["qqq"][3]), xytext=(1.18, 200),
-                 fontsize=8.5, color="#8c4b4b", ha="center", fontweight="bold",
-                 arrowprops=dict(arrowstyle="->", color="#8c4b4b", lw=1.1))
+                 fontsize=8.5, color=METHOD_COLORS["blackbox"], ha="center", fontweight="bold",
+                 arrowprops=dict(arrowstyle="->", color=METHOD_COLORS["blackbox"], lw=1.1))
     ax3.annotate("prototype $\\approx$ delta-vega\n(safe & auditable)", xy=(0 - bw, vals["spy"][1]),
-                 xytext=(-0.02, 18), fontsize=8.5, color="#5a4a78", ha="center", fontweight="bold",
-                 arrowprops=dict(arrowstyle="->", color="#5a4a78", lw=1.1))
+                 xytext=(-0.02, 18), fontsize=8.5, color=NAVY, ha="center", fontweight="bold",
+                 arrowprops=dict(arrowstyle="->", color=NAVY, lw=1.1))
 
     # ---- connecting arrows between panels (figure coords) ----
     for x0, x1 in [(0.345, 0.378), (0.66, 0.69)]:
-        fig.add_artist(FancyArrowPatch((x0, 0.45), (x1, 0.45), transform=fig.transFigure,
-                                       arrowstyle="-|>", mutation_scale=22, lw=2, color="#333"))
+        fig.add_artist(FancyArrowPatch((x0, 0.55), (x1, 0.55), transform=fig.transFigure,
+                                       arrowstyle="-|>", mutation_scale=20, lw=2, color=INK))
+
+    # ---- compact equation strip in the bottom margin (full width, not a dead band) ----
+    fig.text(0.5, 0.085, r"$\mathrm{hedge} = \Delta\nu\ \mathrm{hedge}\ \mathrm{(anchor)} "
+             r"+ \sum_k w_k\, a_k\ \mathrm{(bounded,\ vol\text{-}capped\ residual)}$",
+             ha="center", va="center", fontsize=12, color=INK)
+    fig.text(0.5, 0.025, "every trade traces to a few named regimes",
+             ha="center", va="center", fontsize=9, style="italic", color=INK)
 
     fig.suptitle("Interpretable volatility-surface hedging: matches classical hedging on the tail, "
-                 "dominates deep hedgers, and is fully auditable", fontsize=13, y=0.97)
-    fig.savefig(FIGS / "hero_graphical_abstract.png", dpi=150, bbox_inches="tight")
+                 "dominates deep hedgers, and is fully auditable", fontsize=13, y=0.975, color=INK)
+    fig.savefig(FIGS / "hero_graphical_abstract.png", dpi=150, bbox_inches="tight", pad_inches=0.05)
     plt.close(fig)
     print("wrote hero_graphical_abstract.png")
 

@@ -90,7 +90,7 @@ well}, absorbing the slow directional drift of the 2010--2018 bull market and
 replicating it out-of-sample as large, unintended directional and volatility
 bets.  When the market regime changed, their ``edge'' became catastrophic
 exposure.  The black-box MLP was no better ($\mathrm{CVaR}_{95} = 13.2$, max
-drawdown 300\%).
+drawdown $300$ in the P\&L units used throughout).
 
 This is a systematic failure mode, not a tuning accident.  It recurs across two
 real option markets (SPY, QQQ), five random seeds, and every year that includes
@@ -99,12 +99,10 @@ present in the interpretable prototype hedger we introduce here
 ($\mathrm{CVaR}_{95} = 2.34 \pm 0.10$ on SPY, max drawdown $17.7$).
 
 Standard option hedging relies on two \emph{Greeks}, sensitivities of the option
-price to market variables.  \emph{Delta} ($\delta$) measures how much the option
-price moves per \$1 change in the underlying. \emph{Vega} ($\nu$) measures
-sensitivity to a 1-percentage-point change in \emph{implied volatility}, the
-market's current consensus forecast of future price variability, defined as the
-volatility parameter that, when inserted into the Black--Scholes pricing formula,
-exactly reproduces the observed market price of the option.  Delta--vega hedging
+price to market variables.  \emph{Delta} ($\delta$) measures the price move per \$1
+change in the underlying; \emph{vega} ($\nu$) measures sensitivity to a
+1-percentage-point change in \emph{implied volatility}, the volatility parameter that
+reproduces an option's market price under Black--Scholes.  Delta--vega hedging
 eliminates first-order sensitivity to both the underlying and to the level of
 implied volatility.  Yet the full \emph{shape} of the implied-volatility (IV)
 surface, a two-dimensional map $\sigma(K,T)$ over option strike $K$ and
@@ -257,7 +255,10 @@ maturity. The standardiser is \emph{fit on training data only} (no leakage).
 \paragraph{Prototype policy} A \emph{prototype} is a representative example from
 the training distribution, a ``named regime'' such as \emph{calm}, \emph{elevated
 skew}, or \emph{stressed}, stored as a point $p_k$ in standardised feature space.
-Prototypes are k-means medoids, fixed before action training.  For a new market
+Prototypes are k-means medoids, fixed before action training. The count $K$ is
+cross-validated ($K=8$; Table~\ref{tab:ablation}); \emph{calm}, \emph{elevated-skew},
+and \emph{stressed} are archetypal labels for reading activations, not a claim that
+$K=3$.  For a new market
 state $z$, the hedge is a \emph{similarity-weighted blend}.
 \begin{equation}
   w_k(z) = \frac{\exp(-\lVert z - p_k\rVert^2 / T)}
@@ -309,7 +310,10 @@ the same episodes. The state is the identical standardised feature vector, the
 action is the same $2$-D residual on the delta--vega hedge, and the per-step
 reward is the increment of the episode P\&L so that an episode's return equals the
 hedging P\&L every other policy is scored on. They optimise \emph{expected} return
-(mean P\&L), the standard deep-hedging-as-RL objective.
+(mean P\&L), the standard deep-hedging-as-RL objective. Crucially, PPO and SAC
+\emph{share} the prototype's anchored residual action space and differ only in
+objective (mean P\&L vs.\ tail-weighted CVaR), so their blow-up locates the failure in
+the \emph{objective}, not the action space or anchor.
 
 \paragraph{Volatility-scaled residual cap} On a sharp regime shift the anchored
 residual can itself \emph{add} tail risk (we observe this in the COVID-2020
@@ -397,7 +401,8 @@ vs.\ black box   & $-0.44$ & $[-0.62,\,-0.25]$ & $<10^{-6}$ \\
 the 2022 bear market). \textbf{The prototype hedger achieves
 $\mathrm{CVaR}_{95}=2.38$, matching delta--vega (2.84) while black-box and
 deep-RL hedgers blow up by $5$--$38\times$.} Learned policies run as bounded
-residuals on delta--vega. Best tail in bold.}
+residuals on delta--vega. CVaR and max-DD are in the same per-episode P\&L units
+(not percentages). Best tail in bold.}
 \label{tab:real}
 \small
 \begin{tabular}{lrrrrr}
@@ -690,12 +695,11 @@ windows (high stress fraction), while low-level, gently sloped prototypes
 dominate calm periods. The activation timeline
 (Figure~\ref{fig:real_activation}) shows which regime drives the hedge through
 the test period. Every action is attributable
-to named market regimes. We note an honest caveat. On the long real sample the
-learned residual is small (mean activation entropy ${\approx}0.11$), so the
-prototype largely \emph{reproduces} delta--vega rather than learning sharply
-distinct regime actions. The rich, differentiated behaviour is clearest on the
-synthetic market, which motivates a regime-\emph{diagnostic} reading of the model
-on real data.
+to named market regimes. We note an honest caveat: on the long real sample the
+learned residual is small (mean activation entropy ${\approx}0.11$), so the prototype
+largely \emph{reproduces} delta--vega rather than learning sharply distinct regime
+actions. The differentiated behaviour is clearest on the synthetic market, motivating
+a regime-\emph{diagnostic} reading of the model on real data.
 
 \begin{figure}[t]
   \centering
@@ -730,37 +734,37 @@ bounded residual on delta--vega and trained with a tail-weighted objective, it
 \emph{matches} the strongest classical baseline on the tail in both markets while
 remaining the only learned policy that is stable across seeds. The practical value is
 therefore a hedger that can be deployed where a black box cannot, one that does no
-worse than the desk's existing delta--vega hedge but is fully auditable.
+worse than the desk's existing delta--vega hedge but is fully auditable. Parity in
+fact understates the case: at matched tail risk the prototype trades ${\approx}29\%$
+less than delta--vega ($175$ vs $245$ turnover; Table~\ref{tab:synthetic}), a strictly
+lower cost for the same protection.
 
 \paragraph{Auditability and regulatory trust} Every hedge decomposes into a
-similarity-weighted blend of a small set of named volatility-surface
-regimes (Figures~\ref{fig:proto_surf},~\ref{fig:regimemap},~\ref{fig:anatomy}). A
-reviewer can read \emph{which} regimes drove a trade and \emph{how} the residual
-modified the classical hedge. This directly addresses the trust, auditability and
-model-governance requirements that impede black-box deployment in regulated
-finance, and, unlike the synthetic-only evidence in prior interpretable-hedging
-work, it is demonstrated on fourteen years of real options spanning two crises.
+similarity-weighted blend of named volatility-surface regimes
+(Figures~\ref{fig:proto_surf},~\ref{fig:regimemap},~\ref{fig:anatomy}), so a reviewer
+can read \emph{which} regimes drove a trade and \emph{how} the residual modified the
+classical hedge. This directly addresses the trust, auditability and model-governance
+requirements that impede black-box deployment in regulated finance, and, unlike prior
+synthetic-only interpretable-hedging work, it is demonstrated on fourteen years of
+real options spanning two crises.
 
 \paragraph{A cautionary lesson on model selection} Our most transferable
 methodological finding is negative-turned-constructive. A residual tuned on a calm
-validation window \emph{added} tail risk on a second market (it hurt P\&L in
-$100\%$ of QQQ stress episodes), and naive validation-excess selection overfit so
-badly it discarded the surface entirely. Robustness only transferred once we
-(i) penalised the tail more aggressively and (ii) treated a \emph{second market} as
-the arbiter of generalisation. Practitioners building learned hedgers should expect
-in-sample/validation skill to overstate out-of-sample, regime-shifted performance,
-and should validate across instruments, not just across time.
+validation window \emph{added} tail risk on a second market (hurting P\&L in $100\%$
+of QQQ stress episodes), and naive validation-excess selection overfit so badly it
+discarded the surface. Robustness transferred only once we penalised the tail harder
+and treated a \emph{second market} as the arbiter of generalisation, validating across
+instruments, not just across time.
 
 \paragraph{Four lessons for risk desks}
 \textbf{(1) Validate on a second instrument before deploying.} SPY-only results looked
-adequate, and QQQ exposed over-trading in stress.
+adequate; QQQ exposed over-trading in stress.
 \textbf{(2) Anchor any learned residual to the classical hedge.} The worst case is then a
-small underperformance, not the blow-up the unanchored black-box and deep-RL hedgers suffered.
+small underperformance, not the unanchored blow-up the black-box and deep-RL hedgers suffered.
 \textbf{(3) Never deploy without a CVaR objective.} Removing it inflated tail loss from
-$2.4$ to $87.6$, a $36\times$ increase.
+$2.4$ to $87.6$ ($36\times$).
 \textbf{(4) Interpretability buys auditability, not just trust.} A risk manager can read which
-prototype drove each day's residual (Figure~\ref{fig:anatomy}), the audit trail FRTB requires
-and a black box cannot provide.
+prototype drove each day's residual (Figure~\ref{fig:anatomy}), the audit trail FRTB requires.
 
 %% =====================================================================
 \section{Limitations}
@@ -777,14 +781,14 @@ selection. We report the full grid, and note that naive validation-excess select
 rests on the pre-specified hypothesis confirmed on both markets' held-out tests. Over
 the long horizon the residual is conservative (it stays near delta--vega, activation
 entropy ${\approx}0.11$), so the edge is in robustness and drawdown rather than dramatic
-regime-switching trades, and interpretability is most vivid on synthetic data. A nine-configuration PPO hyperparameter grid (three seeds, both markets) does not
-rescue it. The best tuned PPO still reaches $\mathrm{CVaR}_{95}=20.3$ on SPY
-($8.6\times$ the prototype) and $12.9$ on QQQ, so the overfitting finding survives
-tuning, though a heavily tuned recurrent hedger might be less fragile. The study covers two
-underlyings (SPY, QQQ) but a single liability (one 30d ATM option) and a daily
-rebalance. The underlying hedge leg uses the ETF (tradable), an SPX study would need a
-futures proxy. Costs are a proportional half-spread with no market-impact or borrow
-modelling, and path-dependent payoffs would require a richer state.
+regime-switching trades, and interpretability is most vivid on synthetic data. A
+nine-configuration PPO grid (three seeds, both markets) does not rescue it: the best
+tuned PPO still reaches $\mathrm{CVaR}_{95}=20.3$ on SPY ($8.6\times$ the prototype)
+and $12.9$ on QQQ, so the overfitting survives tuning. The study covers two underlyings
+(SPY, QQQ) but a single liability (one 30d ATM option) and a daily rebalance; the hedge
+leg uses the ETF, so an SPX study would need a futures proxy. Costs are a proportional
+half-spread with no market-impact or borrow modelling, and path-dependent payoffs would
+require a richer state.
 
 %% =====================================================================
 \section{Conclusion and Future Work}
@@ -795,12 +799,11 @@ A small, auditable set of volatility-surface prototypes delivers hedging that is
 two major crises, \emph{matches the strongest classical baseline} (delta--vega) on
 the tail while being the \emph{only learned policy stable across both markets}.
 PPO and SAC are catastrophic in both ($\mathrm{CVaR}_{95}$ 35--90$\times$ above
-delta--vega). The MLP collapses on SPY ($\mathrm{CVaR}_{95}=13.2$, max-DD\,604)
-and is seed-unstable on QQQ even where its point estimate is competitive (CVaR\,4.63).
-Crucially, this cross-market stability did not come for free. A
-naive anchored residual lost on QQQ, and only a \emph{tail-weighted objective}, identified
-by pre-specified validation-only search and confirmed once on each market's held-out
-test, made the robustness transfer across markets.
+delta--vega); the MLP collapses on SPY ($\mathrm{CVaR}_{95}=13.2$, max-DD\,300) and is
+seed-unstable on QQQ. This cross-market stability did not come for free: a naive
+anchored residual lost on QQQ, and only a \emph{tail-weighted objective}, identified by
+pre-specified validation-only search and confirmed once on each market's held-out test,
+made the robustness transfer across markets.
 
 The defensible claim is precise. A constrained, interpretable policy can be as
 tail-safe as classical hedging and far safer than unconstrained deep hedging.

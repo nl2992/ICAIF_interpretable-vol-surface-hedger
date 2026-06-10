@@ -46,7 +46,7 @@ markets (a tie confirmed on each market's test split). The known failure case is
 SPY fold, where the anchored residual can add tail risk before the cap intervenes
 ($\mathrm{CVaR}_{95}=17.96$ post-cap vs.\ $4.12$ for delta--vega); we surface this
 prominently as the boundary of the guarantee. Outside this extreme regime the recipe
-is: an anchored residual, a tail-weighted CVaR objective, and a small named set of
+is an anchored residual, a tail-weighted CVaR objective, and a small named set of
 volatility-surface prototypes, the first empirical test of prototype hedging on
 live options data. Interpretability and tail-risk control are not a trade-off, within
 well-defined scope.
@@ -108,7 +108,7 @@ present in the interpretable prototype hedger we introduce here
 
 Standard option hedging relies on two \emph{Greeks}, sensitivities of the option
 price to market variables.  \emph{Delta} ($\delta$) measures the price move per \$1
-change in the underlying; \emph{vega} ($\nu$) measures sensitivity to a
+change in the underlying. \emph{Vega} ($\nu$) measures sensitivity to a
 1-percentage-point change in \emph{implied volatility}, the volatility parameter that
 reproduces an option's market price under Black--Scholes.  Delta--vega hedging
 eliminates first-order sensitivity to both the underlying and to the level of
@@ -630,12 +630,12 @@ We stress-test stability two ways. \emph{Multi-seed}
 learned policy that never destabilises, every seed beats delta--vega and the spread
 is tight ($2.36\pm0.11$), whereas the MLP swings ($6.61\pm3.93$) and PPO is both
 wildly unstable and uniformly catastrophic ($52.8\pm14.6$). One might ask whether
-the PPO blow-up is a straw man: PPO optimises mean P\&L while the prototype targets
+the PPO blow-up is a straw man. PPO optimises mean P\&L while the prototype targets
 CVaR. Training PPO with a CVaR-shaped reward ($r_t \leftarrow r_t + \kappa \min(r_t,0)$
 for $\kappa\in\{10,50\}$, three seeds) reduces the mean test CVaR$_{95}$ from $44.2$
 to $25.5$ ($\kappa=10$) and $21.4$ ($\kappa=50$, range $18.3$--$24.4$), confirming the
 shaping does tighten tails. PPO still blows up by $\mathbf{9\times}$ the prototype
-($21.4$ vs $2.34$), making the headline bulletproof: the failure is not objective
+($21.4$ vs $2.34$), making the headline bulletproof. The failure is not objective
 mismatch alone but the RL policy's structural inability to stay bounded under
 regime shift. \emph{Walk-forward}
 (Figure~\ref{fig:robustlandscape}). Training on all prior years and testing on each
@@ -728,7 +728,7 @@ windows (high stress fraction), while low-level, gently sloped prototypes
 dominate calm periods. The activation timeline
 (Figure~\ref{fig:real_activation}) shows which regime drives the hedge through
 the test period. Every action is attributable
-to named market regimes. We note an honest caveat: on the long real sample the
+to named market regimes. We note an honest caveat. On the long real sample the
 learned residual is small (mean activation entropy ${\approx}0.11$), so the prototype
 largely \emph{reproduces} delta--vega rather than learning sharply distinct regime
 actions. The differentiated behaviour is clearest on the synthetic market, motivating
@@ -768,7 +768,7 @@ bounded residual on delta--vega and trained with a tail-weighted objective, it
 remaining the only learned policy that is stable across seeds. The practical value is
 therefore a hedger that can be deployed where a black box cannot, one that does no
 worse than the desk's existing delta--vega hedge but is fully auditable. Parity in
-fact understates the case: at matched tail risk the prototype trades ${\approx}29\%$
+fact understates the case. At matched tail risk the prototype trades ${\approx}29\%$
 less than delta--vega ($175$ vs $245$ turnover; Table~\ref{tab:synthetic}), a strictly
 lower cost for the same protection.
 

@@ -324,6 +324,28 @@ median. As volatility spikes the residual shrinks and the policy collapses towar
 the pure delta--vega hedge, capping how much it can speculate in stress.
 
 %% =====================================================================
+\begin{table}[t]
+\centering
+\caption{Experimental configuration.}
+\label{tab:config}
+\small
+\begin{tabular}{ll}
+\toprule
+Setting & Value \\
+\midrule
+Markets & SPY (2010--2023), QQQ (2012--2023); regime-switching synthetic \\
+Liability, hedge & short 30d ATM option; 60d ATM option and underlying \\
+Rebalance & daily (episode stride 3) \\
+Costs & underlying 1\,bp, option 30\,bp half-spread \\
+Prototypes & $K=8$ medoids (swept $\{4,8,16,32\}$) \\
+State & 4 surface factors, ATM/skew/term slope, Greeks, realised vol \\
+Objective & tail-weighted CVaR ($\alpha=0.95$), anchored residual on delta--vega \\
+Training & L-BFGS-B analytic gradients, 5 seeds $\{7,13,23,42,2025\}$, chronological split \\
+Comparators & delta, delta--vega, black-box MLP, PPO, SAC (stable-baselines3) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \section{Data}
 \label{sec:data}
 
@@ -429,15 +451,6 @@ directionally ($\Delta\mathrm{CVaR}_{95}=-0.46$, $p=0.086$. Table~\ref{tab:cross
 but, as the next subsection shows, this parity does not survive a second market without
 a model-selection fix.
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{cumulative_pnl.png}
-  \caption{Cumulative P\&L on the real SPY test window (2020--2023). Black-box and
-  deep-RL hedgers earn high \emph{mean} P\&L through large directional bets, then
-  suffer catastrophic drawdowns during stress events. The prototype's anchored
-  residual stays smooth and low-drawdown throughout.}
-  \label{fig:real_pnl}
-\end{figure}
 
 \subsection{Second universe (QQQ) and cross-market significance}
 \label{sec:qqq}

@@ -50,6 +50,7 @@ class RLConfig:
     gamma: float = 1.0  # finite horizon, no economic discounting of P&L
     verbose: int = 0
     device: str = "auto"  # "cuda" | "cpu" | "auto" (SB3 picks)
+    downside_kappa: float = 0.0  # >0 = CVaR-shaped reward (extra penalty on per-step losses)
 
 
 def _resolve_scale(residual_scale, E: int, L: int) -> np.ndarray:
@@ -81,12 +82,14 @@ class HedgingGymEnv(gym.Env):
         residual_scale=None,
         seed: int = 7,
         random_reset: bool = True,
+        downside_kappa: float = 0.0,
     ):
         super().__init__()
         self.bank = bank
         self.scaler = scaler
         self.action_scale = float(action_scale)
         self.random_reset = random_reset
+        self.downside_kappa = float(downside_kappa)
         self._rng = np.random.default_rng(seed)
 
         E, L, F = bank.features.shape
@@ -150,6 +153,8 @@ class HedgingGymEnv(gym.Env):
             obs = self.feats[e, self.L - 1].copy()  # dummy terminal obs
         else:
             obs = self.feats[e, self._t].copy()
+        if self.downside_kappa > 0.0 and reward < 0.0:
+            reward += self.downside_kappa * reward  # CVaR-shaped: amplify losses
         return obs, float(reward), terminated, False, {}
 
 
@@ -181,6 +186,7 @@ def train_sb3(
     env = HedgingGymEnv(
         train_bank, scaler, action_scale=cfg.action_scale,
         residual_scale=residual_scale, seed=cfg.seed, random_reset=True,
+        downside_kappa=cfg.downside_kappa,
     )
     model = _make_model(env, cfg)
     model.learn(total_timesteps=cfg.total_timesteps, progress_bar=False)

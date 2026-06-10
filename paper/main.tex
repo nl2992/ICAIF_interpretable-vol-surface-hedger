@@ -3,7 +3,7 @@
 %% All numbers/figures are produced by the pipeline in this repository
 %% (reports/ = synthetic study, reports_real/ = real SPY study) and are
 %% reproducible via `make run` and `scripts/run_real_data.py`.
-\documentclass[sigconf,nonacm]{acmart}
+\documentclass[sigconf,anonymous]{acmart}
 
 \usepackage{booktabs}
 \usepackage{amsmath}
@@ -11,6 +11,10 @@
 \graphicspath{{figures/}{../reports/figures/}{../reports_real/figures/}}
 
 \begin{document}
+
+\acmConference[ICAIF '26]{ACM International Conference on AI in Finance}{November 14--17, 2026}{Milan, Italy}
+\acmYear{2026}
+\copyrightyear{2026}
 
 \title{Interpretable Volatility-Surface Prototypes for
 Tail-Risk-Aware Option Hedging}
@@ -38,10 +42,14 @@ $12$--$32\times$ and a black-box MLP is seed-unstable. We further show this
 cross-market robustness is not free. A naive residual \emph{loses} on the second
 market, a failure we trace to a model-selection-under-regime-shift artefact that
 a tail-weighted objective repairs, restoring parity with delta--vega on both held-out
-markets (a tie confirmed on each market's test split). The recipe is an
-anchored residual, a tail-weighted CVaR objective, and a small named set of
+markets (a tie confirmed on each market's test split). The known failure case is the COVID-2020
+SPY fold, where the anchored residual can add tail risk before the cap intervenes
+($\mathrm{CVaR}_{95}=17.96$ post-cap vs.\ $4.12$ for delta--vega); we surface this
+prominently as the boundary of the guarantee. Outside this extreme regime the recipe
+is: an anchored residual, a tail-weighted CVaR objective, and a small named set of
 volatility-surface prototypes, the first empirical test of prototype hedging on
-live options data. Interpretability and tail-risk control are not a trade-off.
+live options data. Interpretability and tail-risk control are not a trade-off, within
+well-defined scope.
 \end{abstract}
 
 \begin{CCSXML}
@@ -838,6 +846,7 @@ assess the prototype catalogue as a decision-support artefact.
 \begin{acks}
 Artefacts, figures and tables in this paper are produced by the open pipeline in
 the project repository and are reproducible end to end.
+Code and data are available at [anonymized repository; link provided at camera-ready].
 \end{acks}
 
 \bibliographystyle{ACM-Reference-Format}

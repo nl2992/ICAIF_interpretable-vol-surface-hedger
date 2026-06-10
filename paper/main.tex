@@ -815,12 +815,12 @@ rests on the pre-specified hypothesis confirmed on both markets' held-out tests.
 the long horizon the residual is conservative (it stays near delta--vega, activation
 entropy ${\approx}0.11$), so the edge is in robustness and drawdown rather than dramatic
 regime-switching trades, and interpretability is most vivid on synthetic data. A
-nine-configuration PPO grid (three seeds, both markets) does not rescue it: the best
+nine-configuration PPO grid (three seeds, both markets) does not rescue it. The best
 tuned PPO still reaches $\mathrm{CVaR}_{95}=20.3$ on SPY ($8.6\times$ the prototype)
 and $12.9$ on QQQ, so the overfitting survives tuning. The acceleration-based cap shows mixed walk-forward results relative to the level cap,
 suggesting that earlier constraint tightening may remove protective capacity during the critical
 onset phase, not just restrict speculative excess. The COVID-2020 fold remains the study's hard
-boundary: the cap mitigates but does not close the gap to delta--vega, a direction for future work
+boundary. The cap mitigates but does not close the gap to delta--vega, a direction for future work
 with richer vol-acceleration signals. The study covers two underlyings
 (SPY, QQQ) but a single liability (one 30d ATM option) and a daily rebalance. The hedge
 leg uses the ETF, so an SPX study would need a futures proxy. Costs are a proportional

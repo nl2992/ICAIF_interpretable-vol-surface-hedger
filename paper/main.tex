@@ -44,7 +44,7 @@ market, a failure we trace to a model-selection-under-regime-shift artefact that
 a tail-weighted objective repairs, restoring parity with delta--vega on both held-out
 markets (a tie confirmed on each market's test split). The known failure case is the COVID-2020
 SPY fold, where the anchored residual can add tail risk before the cap intervenes
-($\mathrm{CVaR}_{95}=17.96$ post-cap vs.\ $4.12$ for delta--vega); we surface this
+($\mathrm{CVaR}_{95}=17.96$ post-cap vs.\ $4.12$ for delta--vega). We surface this
 prominently as the boundary of the guarantee. Outside this extreme regime the recipe
 is an anchored residual, a tail-weighted CVaR objective, and a small named set of
 volatility-surface prototypes, the first empirical test of prototype hedging on
@@ -769,7 +769,7 @@ remaining the only learned policy that is stable across seeds. The practical val
 therefore a hedger that can be deployed where a black box cannot, one that does no
 worse than the desk's existing delta--vega hedge but is fully auditable. Parity in
 fact understates the case. At matched tail risk the prototype trades ${\approx}29\%$
-less than delta--vega ($175$ vs $245$ turnover; Table~\ref{tab:synthetic}), a strictly
+less than delta--vega ($175$ vs $245$ turnover, Table~\ref{tab:synthetic}), a strictly
 lower cost for the same protection.
 
 \paragraph{Auditability and regulatory trust} Every hedge decomposes into a
@@ -791,7 +791,7 @@ instruments, not just across time.
 
 \paragraph{Four lessons for risk desks}
 \textbf{(1) Validate on a second instrument before deploying.} SPY-only results looked
-adequate; QQQ exposed over-trading in stress.
+adequate. QQQ exposed over-trading in stress.
 \textbf{(2) Anchor any learned residual to the classical hedge.} The worst case is then a
 small underperformance, not the unanchored blow-up the black-box and deep-RL hedgers suffered.
 \textbf{(3) Never deploy without a CVaR objective.} Removing it inflated tail loss from
@@ -836,8 +836,8 @@ A small, auditable set of volatility-surface prototypes delivers hedging that is
 two major crises, \emph{matches the strongest classical baseline} (delta--vega) on
 the tail while being the \emph{only learned policy stable across both markets}.
 PPO and SAC are catastrophic in both ($\mathrm{CVaR}_{95}$ 35--90$\times$ above
-delta--vega); the MLP collapses on SPY ($\mathrm{CVaR}_{95}=13.2$, max-DD\,300) and is
-seed-unstable on QQQ. This cross-market stability did not come for free: a naive
+delta--vega). The MLP collapses on SPY ($\mathrm{CVaR}_{95}=13.2$, max-DD\,300) and is
+seed-unstable on QQQ. This cross-market stability did not come for free. A naive
 anchored residual lost on QQQ, and only a \emph{tail-weighted objective}, identified by
 pre-specified validation-only search and confirmed once on each market's held-out test,
 made the robustness transfer across markets.

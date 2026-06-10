@@ -220,3 +220,22 @@
 **Write into paper:**
 - Table 3 (main comparison): add delta-gamma-vega column
 - Section 4.1: one sentence noting whether the prototype hedger closes the gap to a richer analytic hedge
+
+---
+
+## Loop run 2026-06-11 (Loop 1)
+
+### Status: prose quality pass complete
+
+**Completed this run:**
+- Fixed prose colon in abstract (recipe `is:` → `is`)
+- Fixed semicolon in Background (underlying`; \emph{Vega}` → `underlying. \emph{Vega}`)
+- Fixed prose colon in multi-seed robustness section (straw man`:`  → straw man`.`)
+- Fixed prose colon in robustness section (bulletproof`:` → bulletproof`.`)
+- Fixed prose colon in Interpretability section (caveat`:` → caveat`.`)
+- Fixed prose colon in Practical Implications (understates the case`:` → case`.`)
+- Fixed semicolon in Limitations (daily rebalance`;` → daily rebalance`.`)
+- Committed `8af0e2a`, pushed to GitHub
+
+**Task 2 status**: PPO CVaR ✅, regime cap ✅, K-sensitivity ✅, turnover ✅, units ✅ — COMPLETE
+**Remaining**: None for prose quality; regime cap exact 17.96 fold remains unrecoverable (data stripped)

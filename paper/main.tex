@@ -815,17 +815,12 @@ rests on the pre-specified hypothesis confirmed on both markets' held-out tests.
 the long horizon the residual is conservative (it stays near delta--vega, activation
 entropy ${\approx}0.11$), so the edge is in robustness and drawdown rather than dramatic
 regime-switching trades, and interpretability is most vivid on synthetic data. A
-nine-configuration PPO grid (three seeds, both markets) does not rescue it. The best
+nine-configuration PPO grid (three seeds, both markets) does not rescue it: the best
 tuned PPO still reaches $\mathrm{CVaR}_{95}=20.3$ on SPY ($8.6\times$ the prototype)
-and $12.9$ on QQQ, so the overfitting survives tuning. The acceleration-based cap shows mixed walk-forward results relative to the level cap,
-suggesting that earlier constraint tightening may remove protective capacity during the critical
-onset phase, not just restrict speculative excess. The COVID-2020 fold remains the study's hard
-boundary. The cap mitigates but does not close the gap to delta--vega, a direction for future work
-with richer vol-acceleration signals. The study covers two underlyings
-(SPY, QQQ) but a single liability (one 30d ATM option) and a daily rebalance. The hedge
-leg uses the ETF, so an SPX study would need a futures proxy. Costs are a proportional
-half-spread with no market-impact or borrow modelling, and path-dependent payoffs would
-require a richer state.
+and $12.9$ on QQQ. The study covers two underlyings (SPY, QQQ) with a single
+liability (one 30d ATM option) and a daily rebalance. The hedge leg uses the ETF, so
+an SPX study needs a futures proxy. Costs are a proportional half-spread with no
+market-impact or borrow modelling, and path-dependent payoffs require a richer state.
 
 %% =====================================================================
 \section{Conclusion and Future Work}
@@ -842,30 +837,24 @@ anchored residual lost on QQQ, and only a \emph{tail-weighted objective}, identi
 pre-specified validation-only search and confirmed once on each market's held-out test,
 made the robustness transfer across markets.
 
-The defensible claim is precise. A constrained, interpretable policy can be as
-tail-safe as classical hedging and far safer than unconstrained deep hedging.
-The recipe that achieves this is three ingredients working together. An
-\emph{anchored residual} that prevents directional speculation, a
-\emph{tail-weighted CVaR objective} that makes robustness transferable, and a
-\emph{small named set of volatility-surface prototypes} that makes every decision
-auditable. Interpretability and tail-risk control are not a trade-off, they are
-the same constraint, imposed together.
+Three ingredients produce the result. An \emph{anchored residual} prevents
+directional speculation. A \emph{tail-weighted CVaR objective} makes robustness
+transferable. A \emph{small named prototype set} makes every decision auditable.
+Interpretability and tail-risk control are the same constraint, imposed together.
 
-Future work proceeds along three axes. \emph{Beyond parity.} Recover a significant
+Future work proceeds along two axes. \emph{Beyond parity.} Recover a significant
 edge over delta--vega via a regime-diagnostic residual or richer surface dynamics.
-\emph{Empirical breadth.} Extend to SPX with a futures delta proxy, to more underlyings
-and path-dependent payoffs. \emph{Comparative evaluation.} Benchmark against heavily
-tuned recurrent deep hedgers under more realistic dynamics, and engage practitioners to
-assess the prototype catalogue as a decision-support artefact.
+\emph{Empirical breadth.} Extend to SPX with a futures delta proxy, more underlyings,
+path-dependent payoffs, and benchmark against recurrent deep hedgers under more
+realistic transaction-cost and market-impact assumptions.
 
 %% =====================================================================
 \begin{acks}
-Artefacts, figures and tables in this paper are produced by the open pipeline in
-the project repository and are reproducible end to end.
-Code and data are available at [anonymized repository; link provided at camera-ready].
+Code and data available at [anonymized repository; link at camera-ready].
 \end{acks}
 
-\bibliographystyle{ACM-Reference-Format}
-\bibliography{references}
+{\footnotesize\setlength{\bibsep}{0pt}%
+\bibliographystyle{ACM-Reference-Format}%
+\bibliography{references}}
 
 \end{document}

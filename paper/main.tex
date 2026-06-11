@@ -759,7 +759,7 @@ a regime-\emph{diagnostic} reading of the model on real data.
 \end{figure}
 
 %% =====================================================================
-\section{Practical Implications}
+\section{Discussion}
 \label{sec:discussion}
 
 \paragraph{A deployable middle ground between classical and deep hedging} For a
@@ -793,17 +793,14 @@ validation window \emph{added} tail risk on a second market (hurting P\&L in $10
 of QQQ stress episodes), and naive validation-excess selection overfit so badly it
 discarded the surface. Robustness transferred only once we penalised the tail harder
 and treated a \emph{second market} as the arbiter of generalisation, validating across
-instruments, not just across time.
-
-\paragraph{Four lessons for risk desks}
-\textbf{(1) Validate on a second instrument before deploying.} SPY-only results looked
-adequate. QQQ exposed over-trading in stress.
-\textbf{(2) Anchor any learned residual to the classical hedge.} The worst case is then a
-small underperformance, not the unanchored blow-up the black-box and deep-RL hedgers suffered.
-\textbf{(3) Never deploy without a CVaR objective.} Removing it inflated tail loss from
-$2.4$ to $87.6$ ($36\times$).
-\textbf{(4) Interpretability buys auditability, not just trust.} A risk manager can read which
-prototype drove each day's residual (Figure~\ref{fig:anatomy}), the audit trail FRTB requires.
+instruments, not just across time.  Four practical points fall out of this for a risk
+desk: validate on a second instrument before deploying (SPY alone looked adequate; QQQ
+exposed over-trading in stress); anchor any learned residual to the classical hedge, so
+the worst case is a small underperformance rather than the unanchored blow-up the
+black-box and deep-RL hedgers suffered; never drop the CVaR objective (removing it
+inflated tail loss $2.4\!\to\!87.6$, a $36\times$ jump); and treat interpretability as
+buying auditability, not just trust, since a reviewer can read which prototype drove
+each day's residual (Figure~\ref{fig:anatomy})---the audit trail FRTB requires.
 
 %% =====================================================================
 \section{Limitations}

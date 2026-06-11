@@ -324,7 +324,7 @@ the same episodes. The state is the identical standardised feature vector, the
 action is the same $2$-D residual on the delta--vega hedge, and the per-step
 reward is the increment of the episode P\&L so that an episode's return equals the
 hedging P\&L every other policy is scored on. They optimise \emph{expected} return
-(mean P\&L), the standard deep-hedging-as-RL objective. Crucially, PPO and SAC
+(mean P\&L), the standard deep-hedging-as-RL objective. PPO and SAC
 \emph{share} the prototype's anchored residual action space and differ only in
 objective (mean P\&L vs.\ tail-weighted CVaR), so their blow-up locates the failure in
 the \emph{objective}, not the action space or anchor.

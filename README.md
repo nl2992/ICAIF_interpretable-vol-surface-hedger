@@ -1,5 +1,7 @@
 # Interpretable Volatility-Surface Hedger
 
+[![CI](https://github.com/nl2992/ICAIF_interpretable-vol-surface-hedger/actions/workflows/ci.yml/badge.svg)](https://github.com/nl2992/ICAIF_interpretable-vol-surface-hedger/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](environment.yml)
+
 <p align="center">
   <img src="paper/figures/hero_graphical_abstract.png" width="760" alt="The approach in one view: each day's IV surface → a similarity-weighted blend of"/>
 </p>
@@ -221,7 +223,7 @@ See [`TODO.md`](TODO.md) for the full research roadmap and the status of each ph
 
 ## Reproduce (data → analysis → paper)
 
-**Prerequisites.** Python 3.11+, then:
+**Prerequisites.** Python 3.11. For the exact pinned environment use conda — `conda env create -f environment.yml && conda activate ivsh` — or with pip:
 ```bash
 make install
 ```

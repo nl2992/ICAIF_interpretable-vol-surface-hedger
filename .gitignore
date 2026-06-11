@@ -34,3 +34,6 @@ checkpoints/
 
 # Raw + processed data (downloaded/regenerated, not committed — see README)
 data/
+
+# internal planning docs (kept locally, not published)
+docs/internal/

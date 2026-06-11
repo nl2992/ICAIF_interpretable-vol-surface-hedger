@@ -1,5 +1,9 @@
 # TODO — Research Improvement Plans
 
+> **STATUS (2026-06-11): SUBMISSION-READY.** All experiment plans below (A–H) are DONE or scoped; paper compiles at 8pp (ICAIF '26, ACM sigconf). The interpretable IV-surface prototype hedger matches delta–vega on the tail (SPY CVaR95 2.38 vs 2.84) and dominates deep-RL hedgers that blow up 12–32×; the COVID-2020 worst-case fold is scoped honestly. Plans below are a historical record.
+
+---
+
 ## Experiment status (as of 2026-06-09)
 
 | Plan | Description | Status | Key Result |

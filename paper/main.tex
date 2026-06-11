@@ -8,7 +8,13 @@
 \usepackage{booktabs}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{microtype}  % char protrusion + font expansion -> tighter, reproducible line-breaking
 \graphicspath{{figures/}{../reports/figures/}{../reports_real/figures/}}
+%% Modest float-spacing tightening so the bibliography lands within 8pp robustly
+%% across TeX-distribution versions (content unchanged).
+\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+\setlength{\intextsep}{7pt plus 2pt minus 2pt}
+\setlength{\emergencystretch}{2.5em}
 
 \begin{document}
 

@@ -49,9 +49,8 @@ cross-market robustness is not free. A naive residual \emph{loses} on the second
 market, a failure we trace to a model-selection-under-regime-shift artefact that
 a tail-weighted objective repairs, restoring parity with delta--vega on both held-out
 markets (a tie confirmed on each market's test split). The known failure case is the COVID-2020
-SPY fold, where the anchored residual can add tail risk before the cap intervenes
-($\mathrm{CVaR}_{95}=17.96$ post-cap vs.\ $4.12$ for delta--vega). We surface this
-prominently as the boundary of the guarantee. Outside this extreme regime the recipe
+SPY fold, where the anchored residual can add tail risk before the cap intervenes; we
+surface this prominently as the boundary of the guarantee. Outside this extreme regime the recipe
 is an anchored residual, a tail-weighted CVaR objective, and a small named set of
 volatility-surface prototypes, the first empirical test of prototype hedging on
 live options data. Interpretability and tail-risk control are not a trade-off, within
@@ -190,8 +189,8 @@ empirical option data~\cite{mikkila2023empirical}. The policy is frequently a
 model-free reinforcement learner. We therefore include modern policy-gradient and
 actor--critic agents, PPO~\cite{schulman2017ppo} and
 SAC~\cite{haarnoja2018sac}, via stable-baselines3~\cite{raffin2021sb3}, as strong
-deep-hedging comparators. These methods are powerful but rely on opaque networks,
-and, as we show, can overfit catastrophically on real, non-martingale data.
+deep-hedging comparators. These methods hedge well in simulation but rely on opaque
+networks, and, as we show, can overfit catastrophically on real, non-martingale data.
 
 \paragraph{Interpretable and prototype-based hedging} Most directly,
 ProtoHedge~\cite{protohedge2025} replaces the black-box policy with an
@@ -346,8 +345,8 @@ high. The combined cap activates earlier during the onset of a stress event.
 \centering
 \caption{Experimental configuration.}
 \label{tab:config}
-\small
-\begin{tabular}{ll}
+\footnotesize
+\begin{tabular}{@{}l p{0.72\columnwidth}@{}}
 \toprule
 Setting & Value \\
 \midrule
@@ -398,6 +397,7 @@ delta and $36\%$ lower than delta--vega.} Lower CVaR/worst/turnover is better.
 Higher utility is better.}
 \label{tab:synthetic}
 \small
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lrrrrrr}
 \toprule
 policy & mean & $\mathrm{CVaR}_{95}$ & $\mathrm{CVaR}_{99}$ & worst & turn. & util. \\
@@ -543,7 +543,7 @@ vs.\ SAC         & $-87.4$ ($\approx0$)  & $-48.1$ ($\approx0$) & $\approx0$ (be
 \paragraph{Diagnosis. A model-selection-under-regime-shift artefact}
 Why does the anchored residual improve SPY but hurt QQQ? We decompose the residual
 on the test set. On QQQ the residual magnitude is an order of magnitude larger than
-on SPY (mean $|{\rm residual}|$ $0.22$ vs $0.03$) and, decisively, in
+on SPY (mean $|{\rm residual}|$ $0.22$ vs $0.03$) and in
 \textbf{$100\%$ of the QQQ CVaR$_{95}$ tail episodes it leaves P\&L worse than the
 delta--vega base it sits on} (SPY. $67\%$). The validation window (2018--19) is
 calmer than the test window (2020+). The pattern is clear. A residual calibrated
@@ -641,7 +641,7 @@ CVaR. Training PPO with a CVaR-shaped reward ($r_t \leftarrow r_t + \kappa \min(
 for $\kappa\in\{10,50\}$, three seeds) reduces the mean test CVaR$_{95}$ from $44.2$
 to $25.5$ ($\kappa=10$) and $21.4$ ($\kappa=50$, range $18.3$--$24.4$), confirming the
 shaping does tighten tails. PPO still blows up by $\mathbf{9\times}$ the prototype
-($21.4$ vs $2.34$), making the headline bulletproof. The failure is not objective
+($21.4$ vs $2.34$), so the prototype's tail advantage holds even under reward shaping. The failure is not objective
 mismatch alone but the RL policy's structural inability to stay bounded under
 regime shift. \emph{Walk-forward}
 (Figure~\ref{fig:robustlandscape}). Training on all prior years and testing on each
@@ -845,7 +845,7 @@ directional speculation. A \emph{tail-weighted CVaR objective} makes robustness
 transferable. A \emph{small named prototype set} makes every decision auditable.
 Interpretability and tail-risk control are the same constraint, imposed together.
 
-Future work targets a significant edge over delta--vega (via a regime-diagnostic
+Future work targets an edge over delta--vega beyond parity (via a regime-diagnostic
 residual or richer surface dynamics) and broader empirical scope: SPX with a futures
 delta proxy, more underlyings, path-dependent payoffs, and recurrent deep-hedging
 baselines under market-impact costs.

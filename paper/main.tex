@@ -95,34 +95,34 @@ surface, Conditional Value-at-Risk, risk management}
 \section{Introduction}
 %% Vivid failure mode -> research question -> contributions -> roadmap.
 
+\emph{Hedging} means holding offsetting positions so a portfolio barely moves in
+value when the market does; the hard case is hedging through a violent regime change,
+where off-the-shelf deep learning fails badly.
 On the SPY options test period spanning the COVID-2020 crash and the 2022 bear
 market, a default PPO deep-RL hedger trained on 2010--2018 data reached a
-$\mathrm{CVaR}_{95}$ tail loss of $35.7$, twelve times worse than a simple
-delta--vega hedge ($2.84$).  A SAC hedger reached $89.7$, thirty times worse.
+$\mathrm{CVaR}_{95}$ tail loss of $35.7$ (the average loss on the worst $5\%$ of
+days), twelve times worse than a simple delta--vega hedge ($2.84$).  A SAC hedger reached $89.7$, thirty times worse.
 These policies had not failed to learn in-sample.  They had learned \emph{too
 well}, absorbing the slow directional drift of the 2010--2018 bull market and
 replicating it out-of-sample as large, unintended directional and volatility
 bets.  When the market regime changed, their ``edge'' became catastrophic
-exposure.  The black-box MLP was no better ($\mathrm{CVaR}_{95} = 13.2$, max
-drawdown $300$ in the P\&L units used throughout).
+exposure.  The black-box MLP was no better ($\mathrm{CVaR}_{95}=13.2$).
 
 This is a systematic failure mode, not a tuning accident.  It recurs across two
 real option markets (SPY, QQQ), five random seeds, and every year that includes
-a genuine stress event (Figure~\ref{fig:robustlandscape}).  It is \emph{not}
-present in the interpretable prototype hedger we introduce here
-($\mathrm{CVaR}_{95} = 2.34 \pm 0.10$ on SPY, max drawdown $17.7$).
+a genuine stress event (Figure~\ref{fig:robustlandscape}), yet it is absent from
+the interpretable prototype hedger we introduce here ($\mathrm{CVaR}_{95}=2.34$ on SPY).
 
 Standard option hedging relies on two \emph{Greeks}, sensitivities of the option
 price to market variables.  \emph{Delta} ($\delta$) measures the price move per \$1
 change in the underlying. \emph{Vega} ($\nu$) measures sensitivity to a
 1-percentage-point change in \emph{implied volatility}, the volatility parameter that
-reproduces an option's market price under Black--Scholes.  Delta--vega hedging
-eliminates first-order sensitivity to both the underlying and to the level of
-implied volatility.  Yet the full \emph{shape} of the implied-volatility (IV)
-surface, a two-dimensional map $\sigma(K,T)$ over option strike $K$ and
-maturity $T$, varies with regime in ways its scalar summaries miss. The skew
-steepens before crashes, the term structure inverts before earnings, and curvature
-signals tail-risk demand that neither $\delta$ nor $\nu$ alone can hedge.  The Deep Hedging
+reproduces an option's market price under Black--Scholes. Delta--vega hedging
+removes first-order sensitivity to both, but the full \emph{shape} of the
+implied-volatility (IV) surface, a two-dimensional map $\sigma(K,T)$ over strike $K$
+and maturity $T$, varies with regime in ways its scalar summaries miss. The skew
+steepens before crashes and curvature signals tail-risk demand that neither
+$\delta$ nor $\nu$ alone can hedge.  The Deep Hedging
 framework~\cite{buehler2019deep} learns policies robust to transaction costs and
 incomplete markets, but its black-box policy is opaque, a recognised barrier to
 adoption in regulated finance~\cite{protohedge2025}, and, as we show, can
@@ -845,11 +845,10 @@ directional speculation. A \emph{tail-weighted CVaR objective} makes robustness
 transferable. A \emph{small named prototype set} makes every decision auditable.
 Interpretability and tail-risk control are the same constraint, imposed together.
 
-Future work proceeds along two axes. \emph{Beyond parity.} Recover a significant
-edge over delta--vega via a regime-diagnostic residual or richer surface dynamics.
-\emph{Empirical breadth.} Extend to SPX with a futures delta proxy, more underlyings,
-path-dependent payoffs, and benchmark against recurrent deep hedgers under more
-realistic transaction-cost and market-impact assumptions.
+Future work targets a significant edge over delta--vega (via a regime-diagnostic
+residual or richer surface dynamics) and broader empirical scope: SPX with a futures
+delta proxy, more underlyings, path-dependent payoffs, and recurrent deep-hedging
+baselines under market-impact costs.
 
 %% =====================================================================
 \begin{acks}

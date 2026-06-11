@@ -207,8 +207,6 @@ alternatives (OptionsDX, Dolthub, Alpha Vantage, …) with column mappings are i
 [`docs/data_sources.md`](docs/data_sources.md). Surfaces can be denoised per
 maturity with SVI via `market_from_option_panel(..., surface_method="svi")`.
 
-See [`TODO.md`](TODO.md) for the full research roadmap and the status of each phase.
-
 
 <!-- readme-enhanced -->
 ## Figures

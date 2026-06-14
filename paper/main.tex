@@ -623,12 +623,13 @@ QQQ & $\mathbf{5.62\pm0.63}$ & 6.12 & $-0.20$ ($0.48$) & 78.4 / 57.1 \\
 
 \begin{table}[t]
 \centering
-\caption{Real SPY multi-seed $\mathrm{CVaR}_{95}$ (mean$\pm$std, seeds
-$\{7,13,23,42,2025\}$). \textbf{The prototype is the only stable learned policy
-($2.36\pm0.11$). PPO is uniformly catastrophic ($52.8\pm14.6$, a spread 130$\times$
-larger than the prototype's).} SAC is omitted from the multi-seed refit; its
-single-seed SPY tail is already catastrophic ($\mathrm{CVaR}_{95}=89.7$,
-Table~\ref{tab:real}), consistent with PPO.}
+\caption{Real SPY multi-seed $\mathrm{CVaR}_{95}$ for the naive anchored residual
+(mean$\pm$std, seeds $\{7,13,23,42,2025\}$). \textbf{The prototype is the only
+stable learned policy ($2.36\pm0.11$). PPO is uniformly catastrophic
+($52.8\pm14.6$, a spread $130\times$ larger than the prototype's).}
+SAC is omitted; its single-seed tail is already catastrophic
+($\mathrm{CVaR}_{95}=89.7$, Table~\ref{tab:real}).
+The tail-weighted fix (Table~\ref{tab:winner}) gives $2.34\pm0.10$.}
 \label{tab:multiseed}
 \small
 \begin{tabular}{lrr}

@@ -138,8 +138,8 @@ IV-surface regime can eliminate that failure mode while remaining competitive
 with classical delta--vega hedging.  Each market state is compared against a
 small set of learned \emph{prototypes} (named volatility regimes, calm, elevated
 skew, stressed), and the hedge is a similarity-weighted blend of bounded
-per-prototype actions.  Every trade is traceable to a named regime, making the
-policy auditable under MiFID II, Basel model-risk frameworks, and the emerging
+per-prototype actions.  Every trade is traceable to a named regime, supporting
+the audit expectations of MiFID II, Basel model-risk frameworks, and the emerging
 EU AI Act guidance for high-risk financial models.
 
 On a controlled synthetic market and on two real option markets (SPY 2010--2023
@@ -377,7 +377,8 @@ never by harvesting drift. We train Monte-Carlo over many paths and test on
 disjoint held-out paths.
 
 \paragraph{Real} OptionsDX end-of-day chains for \emph{two} underlyings. SPY
-(2010--2023) and QQQ (2012--2023). Cleaning keeps a clean OTM smile
+(2010--2023) and QQQ (2012--2023; 2012 is the start of our OptionsDX QQQ
+coverage). Cleaning keeps a clean OTM smile
 (crossed/stale/expired filters, IV bounds, moneyness band, OTM-only). The funnel is
 reported in the repository. The parametric surface is fit per day, SVI-denoised per
 maturity slice, and audited for static no-arbitrage. This yields \textbf{3.5M
@@ -564,7 +565,9 @@ hypotheses (residual regularisation, a tail-weighted objective, prototype count.
 A shrink-to-base ``do-no-harm'' penalty, feature transfer, seed ensembling, and
 stress reweighting) over a grid of $61$ configurations $\times$ two universes,
 selecting \emph{only} on the validation split and confirming once on test. The full
-grid is logged. Naive validation-excess selection \emph{overfits} (it discards the
+grid is logged; the hypothesis list was fixed after the diagnosis but before any
+test-split evaluation, and the test split was touched exactly once, for the final
+confirmation. Naive validation-excess selection \emph{overfits} (it discards the
 surface entirely and then fails on QQQ test, $+1.43$), a cautionary result in its own
 right. The robust, generalising lever is a \textbf{tail-weighted objective} (a stronger
 CVaR weight and tail level $\alpha$), motivated directly by the diagnosis. Penalise the
@@ -845,6 +848,8 @@ and $12.9$ on QQQ. The study covers two underlyings (SPY, QQQ) with a single
 liability (one 30d ATM option) and a daily rebalance. The hedge leg uses the ETF, so
 an SPX study needs a futures proxy. Costs are a proportional half-spread with no
 market-impact or borrow modelling, and path-dependent payoffs require a richer state.
+Surfaces whose geometry falls outside the training prototypes' coverage (a regime
+with novel skew or curvature) may require refitting the prototype set.
 
 %% =====================================================================
 \section{Conclusion and Future Work}

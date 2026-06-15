@@ -247,7 +247,7 @@ Each claim maps to one committed table under `reports_real/tables/`. Runs are se
 | --- | --- | --- |
 | Prototype matches delta-vega on the tail (**CVaR-95 = 2.34±0.10** SPY, 5-seed); PPO/SAC blow up **12–32×**; MLP seed-unstable — abstract | `python scripts/run_real_data.py` | `reports_real/tables/multiseed_cvar.csv`, `model_comparison.csv` |
 | Cross-market stability across SPY **and** QQQ (parity confirmed on each test split) — §results | `python scripts/run_real_data.py` | `reports_real/tables/multiverse_comparison.csv`, `multiverse_significance.csv` |
-| COVID-2020 boundary: anchored residual adds tail risk; the cap repairs CVaR-95 to **17.96** (~70%) — §boundary | `python scripts/run_regime_cap_compare.py` | `reports_real/tables/regime_cap_compare_spy.csv` |
+| Accel-cap vs level-cap comparison: 2018 fold level CVaR-95 **4.32 → 1.91** (halves); 2020 COVID fold **unchanged** (4.41 → 4.46) — §boundary | `python scripts/run_regime_cap_compare.py` | `reports_real/tables/regime_cap_compare_spy.csv` |
 | Walk-forward CVaR-95 by fold-year (robustness landscape) — Fig | `python scripts/walkforward_stress_audit.py` | `reports_real/tables/walkforward_cvar.csv` |
 | Surface-state contribution ablation (vs scalar Greeks) — §ablation | `python scripts/ablation_surface_contribution.py` | `reports_real/tables/surface_contribution.csv` |
 | All paper figures | `python scripts/make_hero_figures.py` | `paper/figures/*.png` |

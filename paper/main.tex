@@ -836,6 +836,9 @@ delta--vega. A 9-config PPO sweep does not rescue those baselines (best tuned PP
 $\mathrm{CVaR}_{95}=20.3$ on SPY, $8.6\times$ the prototype).
 Scope: SPY/QQQ only, single 30d ATM option, proportional half-spread costs (no
 market-impact or borrow), fixed prototype set (novel surface regimes require refitting).
+Episode stride~3 over 30-day episodes creates autocorrelated test episodes; the
+IID paired bootstrap is anti-conservative, so the true $p$ vs.\ delta--vega is
+likely~$>$0.079---strengthening, not undermining, the tie conclusion.
 
 %% =====================================================================
 \section{Conclusion}

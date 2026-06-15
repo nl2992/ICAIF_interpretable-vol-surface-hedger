@@ -12,9 +12,9 @@
 \graphicspath{{figures/}{../reports/figures/}{../reports_real/figures/}}
 %% Modest float-spacing tightening so the bibliography lands within 8pp robustly
 %% across TeX-distribution versions (content unchanged).
-\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
-\setlength{\intextsep}{7pt plus 2pt minus 2pt}
-\setlength{\emergencystretch}{2.5em}
+\setlength{\textfloatsep}{6pt plus 2pt minus 2pt}
+\setlength{\intextsep}{5pt plus 2pt minus 2pt}
+\setlength{\emergencystretch}{3em}
 
 \begin{document}
 
@@ -51,7 +51,7 @@ repairs, restoring parity with delta--vega on both held-out markets (a direction
 favourable tie, Stouffer $p=0.079$, not significant at $\alpha=0.05$). The known
 boundary is the COVID-2020 SPY fold, where the anchored residual can add tail risk
 before a volatility-scaled cap intervenes (repairing $\mathrm{CVaR}_{95}$ from
-$60.0$ to $18.0$); we surface this prominently as the edge of the guarantee. To our knowledge, this
+$60.0$ to $18.0$); we flag it explicitly as the edge of the guarantee. To our knowledge, this
 is the first empirical test of prototype hedging on live options data, and within
 this scope interpretability and tail-risk control are not a trade-off.
 \end{abstract}
@@ -819,14 +819,12 @@ validation window \emph{added} tail risk on a second market (hurting P\&L in $10
 of QQQ stress episodes), and naive validation-excess selection overfit so badly it
 discarded the surface. Robustness transferred only once we penalised the tail harder
 and treated a \emph{second market} as the arbiter of generalisation, validating across
-instruments, not just across time.  Four practical points fall out of this for a risk
-desk: validate on a second instrument before deploying (SPY alone looked adequate; QQQ
-exposed over-trading in stress); anchor any learned residual to the classical hedge, so
-the worst case is a small underperformance rather than the unanchored blow-up the
-black-box and deep-RL hedgers suffered; never drop the CVaR objective (removing it
-inflated tail loss $2.4\!\to\!87.6$, a $36\times$ jump); and treat interpretability as
-buying auditability, not just trust, since a reviewer can read which prototype drove
-each day's residual (Figure~\ref{fig:real_activation})---the audit trail FRTB requires.
+instruments, not just across time.  Four practical points:
+(1)~validate on a second instrument (SPY alone looked adequate; QQQ exposed over-trading);
+(2)~anchor the residual to the classical hedge so the worst case is a small underperformance,
+not a blow-up; (3)~keep the CVaR objective (removing it inflated tail loss
+$2.4\!\to\!87.6$, $36\times$); (4)~treat interpretability as auditability---the prototype
+decisions are the audit trail FRTB requires (Figure~\ref{fig:real_activation}).
 
 %% =====================================================================
 \section{Limitations}
@@ -837,19 +835,17 @@ it significantly. The directionally favourable cross-market estimate ($p=0.079$,
 significant at $\alpha=0.05$) is a robust tie, not a proven win, and on QQQ a well-tuned
 MLP retains a better point estimate (though it is seed-unstable). The honest claim is parity with the strongest classical baseline across
 two markets, plus dominance over every deep-RL hedger and unique stability, not raw
-outperformance of delta--vega. The fix was found by a search with validation-only
-selection. We report the full grid; naive validation-excess selection
-\emph{overfits} under regime shift (a cautionary result), so the tail-weighting claim
-rests on the pre-specified hypothesis confirmed on both markets' held-out tests. Over
+outperformance of delta--vega. We report the full grid: naive validation-excess selection
+\emph{overfits} under regime shift, so the tail-weighting claim
+rests on the pre-specified hypothesis confirmed on both held-out markets. Over
 the long horizon the residual is conservative (it stays near delta--vega, activation
 entropy ${\approx}0.11$), so the edge is in robustness and drawdown rather than dramatic
-regime-switching trades, and interpretability is most vivid on synthetic data. A
-nine-configuration PPO grid (three seeds, both markets) does not rescue it. The best
-tuned PPO still reaches $\mathrm{CVaR}_{95}=20.3$ on SPY ($8.6\times$ the prototype)
-and $12.9$ on QQQ. The study covers two underlyings (SPY, QQQ) with a single
-liability (one 30d ATM option) and a daily rebalance. The hedge leg uses the ETF, so
-an SPX study needs a futures proxy. Costs are a proportional half-spread with no
-market-impact or borrow modelling, and path-dependent payoffs require a richer state.
+regime-switching trades, and interpretability is most vivid on synthetic data.
+Even a 9-config PPO sweep does not rescue it: the best tuned PPO still reaches
+$\mathrm{CVaR}_{95}=20.3$ on SPY ($8.6\times$ the prototype) and $12.9$ on QQQ.
+The study covers SPY and QQQ (single 30d ATM option, daily rebalance, ETF hedge;
+SPX needs a futures proxy). Costs are a proportional half-spread with no market-impact
+or borrow modelling; path-dependent payoffs require a richer state.
 Surfaces whose geometry falls outside the training prototypes' coverage (a regime
 with novel skew or curvature) may require refitting the prototype set.
 
@@ -862,21 +858,19 @@ A small, auditable set of volatility-surface prototypes delivers hedging that is
 two major crises, \emph{matches the strongest classical baseline} (delta--vega) on
 the tail while being the \emph{only learned policy stable across both markets}.
 PPO and SAC are catastrophic in both ($\mathrm{CVaR}_{95}$ 35--90$\times$ above
-delta--vega). The MLP collapses on SPY ($\mathrm{CVaR}_{95}=13.2$, max-DD\,300) and is
-seed-unstable on QQQ. This cross-market stability did not come for free. A naive
-anchored residual lost on QQQ, and only a \emph{tail-weighted objective}, identified by
-pre-specified validation-only search and confirmed once on each market's held-out test,
-made the robustness transfer across markets.
+delta--vega); the MLP collapses on SPY ($\mathrm{CVaR}_{95}=13.2$) and is seed-unstable.
+This stability was not free: a naive anchored residual lost on QQQ, and robustness
+transferred only once a \emph{tail-weighted objective} was pre-specified and
+confirmed on both held-out markets.
 
 Three ingredients produce the result. An \emph{anchored residual} prevents
 directional speculation. A \emph{tail-weighted CVaR objective} makes robustness
 transferable. A \emph{small named prototype set} makes every decision auditable.
 Interpretability and tail-risk control are the same constraint, imposed together.
 
-Future work targets an edge over delta--vega beyond parity (via a regime-diagnostic
-residual or richer surface dynamics) and broader empirical scope: SPX with a futures
-delta proxy, more underlyings, path-dependent payoffs, and recurrent deep-hedging
-baselines under market-impact costs.
+Future work targets an edge over delta--vega beyond parity (richer surface dynamics,
+regime-diagnostic residuals) and broader scope: SPX, additional underlyings,
+path-dependent payoffs, and market-impact-aware baselines.
 
 %% =====================================================================
 \begin{acks}

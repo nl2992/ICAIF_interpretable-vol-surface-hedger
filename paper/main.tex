@@ -330,9 +330,9 @@ hedging P\&L every other policy is scored on. They optimise \emph{expected} retu
 objective (mean P\&L vs.\ tail-weighted CVaR), so their blow-up locates the failure in
 the \emph{objective}, not the action space or anchor.
 
-\paragraph{Volatility-scaled residual cap} On a sharp regime shift the anchored
-residual can itself \emph{add} tail risk (we observe this in the COVID-2020
-walk-forward fold). We therefore optionally scale the residual by a causal factor
+\paragraph{Volatility-scaled residual cap (pre-specified)} Any anchored residual
+risks adding tail risk under a sharp regime shift; we pre-specify a volatility
+safeguard before examining fold results. The cap scales the residual by a causal factor
 $s_t = \mathrm{clip}\!\big(v_{\mathrm{ref}} / \max(v_t, v_{\mathrm{ref}}),\, s_{\min},\, 1\big)$,
 where $v_t$ is trailing realised volatility and $v_{\mathrm{ref}}$ its training
 median. As volatility spikes the residual shrinks and the policy collapses toward

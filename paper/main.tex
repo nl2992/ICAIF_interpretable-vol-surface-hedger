@@ -467,9 +467,8 @@ SAC (deep RL)  & 5.68 & 89.73 & 125.78 & 2{,}638.8 & $-84.06$ \\
 On real SPY data (Table~\ref{tab:real}) the prototype has the best tail of every
 \emph{learned} policy by a wide margin. Both deep-RL hedgers overfit in-sample drift
 and blow up out-of-sample ($\mathrm{CVaR}_{95}$ $35.7$ and $89.7$, max-DD $339$--$2{,}639$).
-The black-box MLP also blows up on SPY ($\mathrm{CVaR}_{95}=13.2$, max-DD $300$, mean
-$6.61\!\pm\!3.93$ across seeds), whereas the prototype's anchored residual stays a
-genuine hedge ($\mathrm{CVaR}_{95}=2.38$, max-DD $17.7$). The prototype beats delta--vega
+The black-box MLP also blows up on SPY ($\mathrm{CVaR}_{95}=13.2$, max-DD $300$), whereas the prototype's anchored residual stays a
+genuine hedge ($\mathrm{CVaR}_{95}=2.38$, max-DD $17.7$ vs delta--vega $45.6$, $61\%$ lower). The prototype beats delta--vega
 directionally ($\Delta\mathrm{CVaR}_{95}=-0.46$, $p=0.086$. Table~\ref{tab:crosssig}),
 but, as the next subsection shows, this parity does not survive a second market without
 a model-selection fix.

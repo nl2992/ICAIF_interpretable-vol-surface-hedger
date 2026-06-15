@@ -857,7 +857,7 @@ A small, auditable set of volatility-surface prototypes delivers hedging that is
 \emph{fully interpretable} and, across two real markets and fourteen years spanning
 two major crises, \emph{matches the strongest classical baseline} (delta--vega) on
 the tail while being the \emph{only learned policy stable across both markets}.
-PPO and SAC are catastrophic in both ($\mathrm{CVaR}_{95}$ 35--90$\times$ above
+PPO and SAC are catastrophic in both ($\mathrm{CVaR}_{95}$ $12$--$32\times$ above
 delta--vega); the MLP collapses on SPY ($\mathrm{CVaR}_{95}=13.2$) and is seed-unstable.
 This stability was not free: a naive anchored residual lost on QQQ, and robustness
 transferred only once a \emph{tail-weighted objective} was pre-specified and

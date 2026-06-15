@@ -51,9 +51,9 @@ repairs, restoring parity with delta--vega on both held-out markets (a direction
 favourable tie, Stouffer $p=0.079$, not significant at $\alpha=0.05$). The known
 boundary is the COVID-2020 SPY fold, where the anchored residual can add tail risk
 before a volatility-scaled cap intervenes (repairing $\mathrm{CVaR}_{95}$ from
-$60.0$ to $18.0$); we surface this prominently as the edge of the guarantee. This
+$60.0$ to $18.0$); we surface this prominently as the edge of the guarantee. To our knowledge, this
 is the first empirical test of prototype hedging on live options data, and within
-this well-defined scope interpretability and tail-risk control are not a trade-off.
+this scope interpretability and tail-risk control are not a trade-off.
 \end{abstract}
 
 \begin{CCSXML}
@@ -217,11 +217,11 @@ time-to-maturity. We key on the full IV surface $\sigma(K,T)$, whose shape encod
 the market's \emph{probabilistic} view of future regimes. (2)~\emph{objective}.
 ProtoHedge maximises mean P\&L at CVaR$_{50}$. We target $\mathrm{CVaR}_{95}$
 explicitly, which proves essential, removing the CVaR term explodes tail risk from
-$2.4$ to $87.6$ (Section~\ref{sec:results}). (3)~\emph{data}. ProtoHedge validates
-exclusively on synthetic paths and calls empirical validation its ``crucial next
+$2.4$ to $87.6$ (Section~\ref{sec:results}). (3)~\emph{data}. ProtoHedge uses
+synthetic paths and calls empirical validation its ``crucial next
 step''. We validate on real SPY and QQQ data spanning two crises and diagnose
-exactly why a naive transfer fails, the first empirical test of the prototype
-architecture on live options data.
+exactly why a naive transfer fails, to our knowledge the first empirical test
+of the prototype architecture on live options data.
 
 \paragraph{Explainable AI} Post-hoc explainers (LIME, SHAP) approximate a
 trained black box but can be unstable and manipulable. This has motivated a

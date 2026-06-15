@@ -45,8 +45,8 @@ reason. The method runs as a bounded residual on the classical delta--vega hedge
 trained under a tail-weighted CVaR objective. Cross-market robustness is not free:
 a naive residual \emph{loses} on the second market, a failure we trace to a
 model-selection-under-regime-shift artefact that the tail-weighted objective repairs,
-restoring parity with delta--vega on both held-out markets (a directionally
-favourable tie, Stouffer $p=0.079$, not significant at $\alpha=0.05$). The known
+restoring parity with delta--vega on both held-out markets (Stouffer $p=0.079$,
+not significant at $\alpha=0.05$). The known
 boundary is the COVID-2020 SPY fold, where the anchored residual can add tail risk
 before a pre-registered volatility-scaled cap intervenes (repairing $\mathrm{CVaR}_{95}$ from
 $60.0$ to $18.0$, cap parameters fixed on training data only). To our knowledge, this

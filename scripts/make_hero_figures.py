@@ -106,17 +106,15 @@ def fig_surface_vocabulary(proto, scaler):
     tenor = np.array([7, 30, 60, 90, 180, 365])
     M, T = np.meshgrid(moneyness, tenor)
     fig = plt.figure(figsize=(11, 4.6))
-    for i, (j, name, cmap) in enumerate([(calm, "calm-regime prototype", "Blues"),
-                                          (stress, "stressed-regime prototype", "Reds")]):
+    for i, (j, name, cmap) in enumerate([(calm, "calm-regime prototype", "cividis"),
+                                          (stress, "stressed-regime prototype", "cividis")]):
         ax = fig.add_subplot(1, 2, i + 1, projection="3d")
         Z = _surface(params[j], moneyness, tenor)
-        ax.plot_surface(M, T, Z, cmap=cmap, edgecolor="k", linewidth=0.15, alpha=0.95)
+        ax.plot_surface(M, T, Z, cmap=cmap, edgecolor="#33415c", linewidth=0.12, alpha=0.95)
         ax.set_xlabel("moneyness K/F"); ax.set_ylabel("tenor (days)")
         ax.set_zlabel("implied vol")
-        ax.set_title(f"P{j}: {name}")
+        ax.set_title(f"P{j}: {name}", fontsize=10)
         ax.view_init(elev=22, azim=-128)
-    fig.suptitle("The learned regime vocabulary: each prototype is a readable IV surface",
-                 fontsize=12, y=0.99)
     fig.tight_layout()
     fig.savefig(FIGS / "hero_surface_vocabulary.png", bbox_inches="tight"); plt.close(fig)
 
@@ -130,15 +128,14 @@ def fig_regime_map(proto, scaler, teb):
     protoproj = (proto.prototypes - X.mean(0)) @ Vt[:2].T
     reg = np.repeat(teb.regime_start, teb.horizon)
     fig, ax = plt.subplots(figsize=(7.5, 5.5))
-    for r, c, lab in [(0, "#4c72b0", "calm"), (1, "#c44e52", "stress")]:
+    for r, c, lab in [(0, "#5b7fa6", "calm"), (1, "#7a2230", "stress")]:
         m = reg == r
         ax.scatter(proj[m, 0], proj[m, 1], s=6, c=c, alpha=0.25, label=lab, edgecolors="none")
-    ax.scatter(protoproj[:, 0], protoproj[:, 1], s=320, c="gold", marker="*",
-               edgecolors="k", linewidths=1.2, zorder=5, label="prototypes")
+    ax.scatter(protoproj[:, 0], protoproj[:, 1], s=300, c="#1D4F91", marker="*",
+               edgecolors="#0A1F44", linewidths=1.0, zorder=5, label="prototypes")
     for j, (px, py) in enumerate(protoproj):
-        ax.annotate(f"P{j}", (px, py), fontsize=9, fontweight="bold", ha="center", va="center")
+        ax.annotate(f"P{j}", (px, py), fontsize=9, color="#0A1F44", ha="center", va="center")
     ax.set_xlabel("state PC-1"); ax.set_ylabel("state PC-2")
-    ax.set_title("Market-state regime map: prototypes anchor calm and stressed regions")
     ax.legend(loc="best")
     fig.tight_layout(); fig.savefig(FIGS / "hero_regime_map.png", bbox_inches="tight"); plt.close(fig)
 
@@ -155,12 +152,10 @@ def fig_robustness_landscape():
             ax.axis("off"); continue
         df = pd.read_csv(path).set_index("test_year")
         for m in [c for c in ["delta_vega", "prototype", "prototype_capped", "blackbox", "ppo"] if c in df]:
-            ax.plot(df.index, df[m], marker="o", label=m, color=COLORS.get(m.replace("_capped", "")))
-        ax.set_yscale("log"); ax.set_title(f"{title}: walk-forward CVaR95 by year")
+            ax.plot(df.index, df[m], marker="o", markersize=4, label=m, color=COLORS.get(m.replace("_capped", "")))
+        ax.set_yscale("log"); ax.set_title(title, fontsize=10)
         ax.set_xlabel("test year")
     axes[0].set_ylabel("CVaR95 (log scale)"); axes[0].legend(fontsize=8)
-    fig.suptitle("Robustness landscape: deep hedgers blow up in crises; the prototype stays bounded",
-                 y=1.0, fontsize=12)
     fig.tight_layout(); fig.savefig(FIGS / "hero_robustness_landscape.png", bbox_inches="tight"); plt.close(fig)
 
 

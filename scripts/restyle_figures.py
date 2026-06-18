@@ -93,9 +93,9 @@ def _grouped_bar(csv, figpath, title):
     piv = df.pivot_table(index="universe", columns="method", values="cvar_95")
     for i, m in enumerate(methods):
         ax.bar(x + i * bw, [piv.loc[u, m] for u in unis], bw, label=m,
-               color=METHOD_COLORS.get(m), edgecolor="k", linewidth=0.4)
+               color=METHOD_COLORS.get(m), edgecolor="white", linewidth=0.4)
     ax.set_xticks(x + bw * (len(methods) - 1) / 2); ax.set_xticklabels([u.upper() for u in unis])
-    ax.set_ylabel("CVaR95 tail loss (test split)"); ax.set_title(title)
+    ax.set_ylabel("CVaR95 tail loss (test split)")
     ax.legend(fontsize=8, ncol=2)
     fig.tight_layout(); fig.savefig(figpath, dpi=140); plt.close(fig)
 

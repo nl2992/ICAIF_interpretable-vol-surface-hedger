@@ -335,6 +335,7 @@ def plot_architecture(path: Path) -> None:
         ("Hedging environment", "daily rebalance, transaction costs"),
         ("Cost-adjusted CVaR objective", "max E[PnL] - λ·CVaR_α(loss)  (Rockafellar–Uryasev)"),
     ]
+    ink = "#0A1F44"
     fig, ax = plt.subplots(figsize=(7.6, 10))
     ax.set_xlim(0, 10)
     ax.set_ylim(0, len(steps) * 1.25)
@@ -343,19 +344,17 @@ def plot_architecture(path: Path) -> None:
     centers = []
     for title, sub in steps:
         box = FancyBboxPatch(
-            (1.2, y - 0.42), 7.6, 0.84, boxstyle="round,pad=0.04,rounding_size=0.12",
-            linewidth=1.4, edgecolor="#33415c", facecolor="#eef2ff",
+            (1.2, y - 0.42), 7.6, 0.84, boxstyle="round,pad=0.04,rounding_size=0.06",
+            linewidth=0.9, edgecolor=ink, facecolor="white",
         )
         ax.add_patch(box)
-        ax.text(5.0, y + 0.12, title, ha="center", va="center", fontsize=11, fontweight="bold")
-        ax.text(5.0, y - 0.2, sub, ha="center", va="center", fontsize=8, color="#444")
+        ax.text(5.0, y + 0.12, title, ha="center", va="center", fontsize=10.5, color=ink)
+        ax.text(5.0, y - 0.2, sub, ha="center", va="center", fontsize=8, color="#555555")
         centers.append(y)
         y -= 1.25
     for y0, y1 in zip(centers[:-1], centers[1:]):
         ax.add_patch(FancyArrowPatch((5.0, y0 - 0.44), (5.0, y1 + 0.44),
-                                     arrowstyle="-|>", mutation_scale=16, color="#33415c", linewidth=1.4))
-    ax.text(5.0, len(steps) * 1.25 - 0.15, "Interpretable Prototype Volatility-Surface Hedger",
-            ha="center", fontsize=12, fontweight="bold")
+                                     arrowstyle="-|>", mutation_scale=14, color="#888888", linewidth=1.0))
     fig.tight_layout()
     fig.savefig(path, dpi=130)
     plt.close(fig)
@@ -383,15 +382,15 @@ def plot_activation_timeline(weights_ep, order, regime, dates, path: Path) -> No
     x = dates[order] if dates is not None else np.arange(len(order))
     k = w.shape[1]
     fig, ax = plt.subplots(figsize=(9, 4.5))
+    ramp = plt.cm.cividis(np.linspace(0.05, 0.95, k))
     ax.stackplot(x, *[w[:, j] for j in range(k)], labels=[f"P{j}" for j in range(k)],
-                 colors=plt.cm.tab10(np.linspace(0, 1, k)))
-    # shade stressed episodes lightly along the top
+                 colors=ramp)
+    # shade stressed episodes lightly along the top (muted maroon)
     reg = np.asarray(regime)[order]
-    ax.fill_between(x, 1.0, 1.03, where=reg == 1, color="red", alpha=0.5, step="mid")
+    ax.fill_between(x, 1.0, 1.03, where=reg == 1, color="#7a2230", alpha=0.4, step="mid")
     ax.set_ylim(0, 1.03)
     ax.set_ylabel("prototype activation weight")
     ax.set_xlabel("episode start date" if dates is not None else "test episode (chronological)")
-    ax.set_title("Prototype activation over time (red band = stressed start)")
     ax.legend(fontsize=7, ncol=k, loc="lower center")
     fig.tight_layout()
     fig.savefig(path, dpi=130)

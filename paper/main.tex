@@ -152,13 +152,11 @@ are not a trade-off.
 
 \noindent\textbf{We make the following contributions.}
 \begin{enumerate}
-\item An interpretable \textbf{prototype action head over IV-surface regimes}.
-Each hedge is a similarity-weighted blend of bounded per-prototype actions, with
-the top prototype weights and final action exposed at every decision, the
-decision \emph{is} the explanation (Section~\ref{sec:method}).
-\item An \textbf{anchored residual} formulation that runs the policy as a bounded
-correction to delta--vega, preventing out-of-sample directional speculation on
-non-martingale data (Section~\ref{sec:method}).
+\item An interpretable, \textbf{anchored-residual prototype hedger over IV-surface regimes}:
+each hedge is a similarity-weighted blend of bounded per-prototype actions, run as a bounded
+correction to delta--vega so the policy cannot take out-of-sample directional bets on
+non-martingale data; the top prototype weights and final action are exposed at every
+decision---the decision \emph{is} the explanation (Section~\ref{sec:method}).
 \item A rigorous cross-market comparison showing the prototype hedger is the
 \emph{only} learned policy \emph{stable across both seeds and markets}.
 $\mathrm{CVaR}_{95}$ $2.34\!\pm\!0.10$ versus PPO $52.8\!\pm\!14.6$ on SPY

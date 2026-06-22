@@ -132,11 +132,11 @@ Delta-gamma-vega (option sized by gamma using BS ATM approximation) achieves CVa
 
 | Plan | Description | Status | Result |
 |---|---|---|---|
-| A | Surface-vs-Greeks ablation (multi-seed) | ✅ Done | Full features best on SPY (p<0.001); surface-only best on QQQ |
-| B | ProtoHedge baseline (synthetic) | ✅ Done | 10 seeds: CVaR95 tie (5-5), but surface wins 10/10 utility and 10/10 max-drawdown (78% lower) |
-| C | Tuned PPO (SPY) | ✅ Done | Best tuned PPO CVaR95=20.31 vs prototype 2.38 |
-| D | Prototype regime audit | ✅ Done | SPY P4: 100% stress; QQQ P5: 72.7% stress |
-| E | IWM third universe | ❌ Blocked | No IWM data archives available |
-| F | Walk-forward stress folds | ✅ Done | Capped prototype repairs 2020 spike |
-| G | Trade anatomy figures | ✅ Done | 2020 stress + 2019 calm generated |
-| H | Delta-gamma-vega baseline | ✅ Done | CVaR95=4.69, worse than delta-vega=2.85 |
+| A | Surface-vs-Greeks ablation (multi-seed) | Done | Full features best on SPY (p<0.001); surface-only best on QQQ |
+| B | ProtoHedge baseline (synthetic) | Done | 10 seeds: CVaR95 tie (5-5), but surface wins 10/10 utility and 10/10 max-drawdown (78% lower) |
+| C | Tuned PPO (SPY) | Done | Best tuned PPO CVaR95=20.31 vs prototype 2.38 |
+| D | Prototype regime audit | Done | SPY P4: 100% stress; QQQ P5: 72.7% stress |
+| E | IWM third universe | Blocked | No IWM data archives available |
+| F | Walk-forward stress folds | Done | Capped prototype repairs 2020 spike |
+| G | Trade anatomy figures | Done | 2020 stress + 2019 calm generated |
+| H | Delta-gamma-vega baseline | Done | CVaR95=4.69, worse than delta-vega=2.85 |

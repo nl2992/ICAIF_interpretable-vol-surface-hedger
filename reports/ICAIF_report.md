@@ -201,7 +201,7 @@ val-excess selection *overfits* (it drops the surface entirely, then fails QQQ t
 | SPY | **2.34 ± 0.10** | 2.85 | −0.47 (0.08) | 35.7 / 89.7 |
 | QQQ | **5.62 ± 0.63** | 6.12 | −0.20 (0.48) | 78.4 / 57.1 |
 
-**Tie-or-beat delta–vega on BOTH universes ✅** (QQQ's significant loss +2.94 → tie
+**Tie-or-beat delta–vega on BOTH universes** (QQQ's significant loss +2.94 → tie
 −0.20). Stouffer-combined vs delta–vega flips from p≈1e-4 *worse* to **p=0.079
 favorable**, while PPO/SAC are dominated by 1–2 orders of magnitude. Honest caveat: on
 QQQ the (seed-unstable) MLP keeps a better point estimate (4.63); the prototype is the

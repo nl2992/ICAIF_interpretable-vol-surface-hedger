@@ -176,14 +176,12 @@ why a naive residual adds tail risk on the second market, run a pre-specified
 validation-only search, and confirm that a tail-weighted objective restores
 cross-market parity with delta--vega (directionally favourable, Stouffer-combined
 $p=0.079$, not significant at $\alpha=0.05$; Section~\ref{sec:fix}).
-\item A \textbf{full ablation and interpretability suite} showing the CVaR term
-is essential (removing it explodes $\mathrm{CVaR}_{95}$ from $2.4$ to $87.6$),
-and mapping each prototype to historical regimes so every hedge is auditable
-(Sections~\ref{sec:results},~\ref{sec:interpretability}).
-\item A \textbf{volatility-scaled residual cap}, a deployable safeguard that
-shrinks the residual as realised volatility spikes; on the worst (COVID-2020)
-fold it repairs $\mathrm{CVaR}_{95}$ from $60.0$ to $18.0$ and is net-beneficial
-across crisis folds (Sections~\ref{sec:method},~\ref{sec:robustness}).
+\item \textbf{Validation and deployment safeguards.} A full ablation shows the CVaR
+term is essential (removing it explodes $\mathrm{CVaR}_{95}$ from $2.4$ to $87.6$) and
+maps each prototype to a historical regime so every hedge is auditable; a
+\textbf{volatility-scaled residual cap} then shrinks the residual as realised volatility
+spikes, repairing the worst (COVID-2020) fold from $\mathrm{CVaR}_{95}$ $60.0$ to $18.0$
+(Sections~\ref{sec:results},~\ref{sec:interpretability},~\ref{sec:robustness}).
 \end{enumerate}
 
 %% =====================================================================

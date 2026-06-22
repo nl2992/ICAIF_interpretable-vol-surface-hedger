@@ -150,6 +150,16 @@ finding of this paper is therefore not a marginal CVaR improvement but a
 constrained, interpretable one does not. Interpretability and tail-risk control
 are not a trade-off.
 
+\noindent\textbf{One claim, with supporting evidence.} The novel result is the
+failure mode itself: unconstrained deep hedgers blow up out-of-sample on real
+options data, while a constrained, interpretable prototype hedger does not.
+Our action head follows ProtoHedge~\cite{protohedge2025}; what is new here is the
+\emph{first} test of prototype hedging on fourteen years of live, two-market
+options data, a tail-weighted $\mathrm{CVaR}$ training objective in place of its
+expected-utility objective, and an IV-surface regime state in place of the scalar
+inputs of prior prototype hedgers. The remaining contributions below are the
+evidence and tooling that establish and harden that one claim, not separate theses.
+
 \noindent\textbf{We make the following contributions.}
 \begin{enumerate}
 \item An interpretable, \textbf{anchored-residual prototype hedger over IV-surface regimes}:
